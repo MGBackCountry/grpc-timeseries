@@ -298,7 +298,7 @@ def test_serve_routes_client_modules_without_starting_server():
         module="get",
         target="localhost:50051",
         entity_id="entity-1234",
-        stream="consumed_kwh",
+        series="consumed_kwh",
         timestamp=datetime(2024, 8, 30, 5, 20, tzinfo=UTC),
         value=None,
     )
@@ -321,6 +321,8 @@ def test_build_parser_includes_client_arguments():
             "set",
             "--entity-id",
             "meter-42",
+            "--series",
+            "power",
             "--value",
             "42.5",
             "--timestamp",
@@ -330,6 +332,7 @@ def test_build_parser_includes_client_arguments():
 
     assert args.module == "set"
     assert args.entity_id == "meter-42"
+    assert args.series == "power"
     assert args.value == pytest.approx(42.5)
     assert args.target == "localhost:50051"
     assert args.timestamp == datetime(2024, 1, 15, 10, 30, tzinfo=UTC)
@@ -349,7 +352,7 @@ def test_build_parser_rejects_invalid_timestamp(timestamp):
 def test_client_build_entry_converts_datetime_to_protobuf_timestamp():
     args = types.SimpleNamespace(
         entity_id="meter-1",
-        stream="power",
+        series="power",
         timestamp=datetime(2024, 1, 15, 10, 30, tzinfo=UTC),
         value=42.5,
     )
@@ -411,7 +414,7 @@ def test_run_client_module_delete(capsys):
             module="delete",
             target="localhost:50051",
             entity_id="meter-1",
-            stream="power",
+            series="power",
             timestamp=datetime(1970, 1, 1, tzinfo=UTC),
         )
         result = server._run_client_module(args)
@@ -449,7 +452,7 @@ def test_run_client_module_get_converts_datetime_to_protobuf_timestamp(capsys):
             module="get",
             target="localhost:50051",
             entity_id="meter-1",
-            stream="power",
+            series="power",
             timestamp=datetime(2024, 1, 15, 10, 30, tzinfo=UTC),
         )
         result = server._run_client_module(args)
@@ -491,7 +494,7 @@ def test_run_client_module_query(capsys):
             module="query",
             target="localhost:50051",
             entity_id="meter-1",
-            stream="power",
+            series="power",
             start=datetime(1970, 1, 1, 0, 0, 1, tzinfo=UTC),
             end=datetime(1970, 1, 1, 0, 0, 2, tzinfo=UTC),
             limit=0,
@@ -537,7 +540,7 @@ def test_run_client_module_version(capsys):
             module="version",
             target="localhost:50051",
             entity_id="entity-1234",
-            stream="consumed_kwh",
+            series="consumed_kwh",
             timestamp=datetime(2024, 8, 30, 5, 20, tzinfo=UTC),
         )
         result = server._run_client_module(args)
@@ -556,7 +559,7 @@ def test_run_client_module_query_missing_start():
         module="query",
         target="localhost:50051",
         entity_id="meter-1",
-        stream="power",
+        series="power",
         start=None,
         end=datetime(1970, 1, 1, tzinfo=UTC),
         limit=0,
@@ -572,7 +575,7 @@ def test_run_client_module_query_missing_end():
         module="query",
         target="localhost:50051",
         entity_id="meter-1",
-        stream="power",
+        series="power",
         start=datetime(1970, 1, 1, tzinfo=UTC),
         end=None,
         limit=0,

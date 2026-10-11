@@ -70,7 +70,7 @@ def _client_build_entry(args: argparse.Namespace) -> timeseries_pb2.Entry:
     return timeseries_pb2.Entry(
         key=timeseries_pb2.EntryKey(
             entity_id=args.entity_id,
-            stream=args.stream,
+            stream=args.series,
             timestamp_ms=_timestamp_from_datetime(args.timestamp),
         ),
         value=args.value,
@@ -93,7 +93,7 @@ def _run_client_module(
                         timeseries_pb2.GetEntryRequest(
                             key=timeseries_pb2.EntryKey(
                                 entity_id=args.entity_id,
-                                stream=args.stream,
+                                stream=args.series,
                                 timestamp_ms=_timestamp_from_datetime(args.timestamp),
                             )
                         )
@@ -134,7 +134,7 @@ def _run_client_module(
                         timeseries_pb2.DeleteEntryRequest(
                             key=timeseries_pb2.EntryKey(
                                 entity_id=args.entity_id,
-                                stream=args.stream,
+                                stream=args.series,
                                 timestamp_ms=_timestamp_from_datetime(args.timestamp),
                             )
                         )
@@ -152,7 +152,7 @@ def _run_client_module(
                     query_reply = client.QueryRange(
                         timeseries_pb2.QueryRangeRequest(
                             entity_id=args.entity_id,
-                            stream=args.stream,
+                            stream=args.series,
                             start_ms=_timestamp_to_milliseconds(_timestamp_from_datetime(start)),
                             end_ms=_timestamp_to_milliseconds(_timestamp_from_datetime(end)),
                             limit=limit,
@@ -186,7 +186,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="store_true")
     parser.add_argument("--target", default="localhost:50051")
     parser.add_argument("--entity-id", dest="entity_id", default="entity-1234", metavar="ENTITY_ID")
-    parser.add_argument("--stream", default="consumed_kwh")
+    parser.add_argument("--series", default="consumed_kwh")
     parser.add_argument(
         "--timestamp",
         type=_parse_datetime,

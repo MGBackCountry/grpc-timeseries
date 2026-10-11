@@ -93,27 +93,27 @@ datetimes with a timezone.
 
 #### Get a single entry
 ```bash
-uv run python -m grpc_timeseries get --entity-id entity-1234 --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z
+uv run python -m grpc_timeseries get --entity-id entity-1234 --series consumed_kwh --timestamp 2024-08-30T05:20:00Z
 ```
 
 #### Set a new entry
 ```bash
-uv run python -m grpc_timeseries set --entity-id entity-1234 --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z --value 12.5
+uv run python -m grpc_timeseries set --entity-id entity-1234 --series consumed_kwh --timestamp 2024-08-30T05:20:00Z --value 12.5
 ```
 
 #### Update an existing entry
 ```bash
-uv run python -m grpc_timeseries update --entity-id entity-1234 --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z --value 18.75
+uv run python -m grpc_timeseries update --entity-id entity-1234 --series consumed_kwh --timestamp 2024-08-30T05:20:00Z --value 18.75
 ```
 
 #### Delete an entry
 ```bash
-uv run python -m grpc_timeseries delete --entity-id entity-1234 --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z
+uv run python -m grpc_timeseries delete --entity-id entity-1234 --series consumed_kwh --timestamp 2024-08-30T05:20:00Z
 ```
 
 #### Query a range of entries
 ```bash
-uv run python -m grpc_timeseries query --entity-id entity-1234 --stream consumed_kwh --start 2024-08-30T05:20:00Z --end 2024-08-31T05:20:00Z --limit 10
+uv run python -m grpc_timeseries query --entity-id entity-1234 --series consumed_kwh --start 2024-08-30T05:20:00Z --end 2024-08-31T05:20:00Z --limit 10
 ```
 
 #### Get server version

@@ -11,7 +11,7 @@ def main() -> int:
     options_with_values = {
         "--target",
         "--entity-id",
-        "--stream",
+        "--series",
         "--timestamp",
         "--value",
         "--start",
