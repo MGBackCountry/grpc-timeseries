@@ -9,7 +9,7 @@ def main() -> int:
     forwarded_args = sys.argv[1:]
     modules = {"serve", "get", "set", "update", "delete", "query", "version"}
     options_with_values = {
-        "--target",
+        "--server-address",
         "--entity-id",
         "--series",
         "--timestamp",

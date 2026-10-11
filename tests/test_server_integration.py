@@ -296,7 +296,7 @@ def test_serve_routes_client_modules_without_starting_server():
     args = types.SimpleNamespace(
         version=False,
         module="get",
-        target="localhost:50051",
+        server_address="localhost:50051",
         entity_id="entity-1234",
         series="consumed_kwh",
         timestamp=datetime(2024, 8, 30, 5, 20, tzinfo=UTC),
@@ -319,6 +319,8 @@ def test_build_parser_includes_client_arguments():
     args = parser.parse_args(
         [
             "set",
+            "--server-address",
+            "127.0.0.1:50052",
             "--entity-id",
             "meter-42",
             "--series",
@@ -334,7 +336,7 @@ def test_build_parser_includes_client_arguments():
     assert args.entity_id == "meter-42"
     assert args.series == "power"
     assert args.value == pytest.approx(42.5)
-    assert args.target == "localhost:50051"
+    assert args.server_address == "127.0.0.1:50052"
     assert args.timestamp == datetime(2024, 1, 15, 10, 30, tzinfo=UTC)
 
 
@@ -412,7 +414,7 @@ def test_run_client_module_delete(capsys):
     try:
         args = types.SimpleNamespace(
             module="delete",
-            target="localhost:50051",
+            server_address="localhost:50051",
             entity_id="meter-1",
             series="power",
             timestamp=datetime(1970, 1, 1, tzinfo=UTC),
@@ -450,7 +452,7 @@ def test_run_client_module_get_converts_datetime_to_protobuf_timestamp(capsys):
     try:
         args = types.SimpleNamespace(
             module="get",
-            target="localhost:50051",
+            server_address="localhost:50051",
             entity_id="meter-1",
             series="power",
             timestamp=datetime(2024, 1, 15, 10, 30, tzinfo=UTC),
@@ -492,7 +494,7 @@ def test_run_client_module_query(capsys):
     try:
         args = types.SimpleNamespace(
             module="query",
-            target="localhost:50051",
+            server_address="localhost:50051",
             entity_id="meter-1",
             series="power",
             start=datetime(1970, 1, 1, 0, 0, 1, tzinfo=UTC),
@@ -538,7 +540,7 @@ def test_run_client_module_version(capsys):
     try:
         args = types.SimpleNamespace(
             module="version",
-            target="localhost:50051",
+            server_address="localhost:50051",
             entity_id="entity-1234",
             series="consumed_kwh",
             timestamp=datetime(2024, 8, 30, 5, 20, tzinfo=UTC),
@@ -557,7 +559,7 @@ def test_run_client_module_version(capsys):
 def test_run_client_module_query_missing_start():
     args = types.SimpleNamespace(
         module="query",
-        target="localhost:50051",
+        server_address="localhost:50051",
         entity_id="meter-1",
         series="power",
         start=None,
@@ -573,7 +575,7 @@ def test_run_client_module_query_missing_start():
 def test_run_client_module_query_missing_end():
     args = types.SimpleNamespace(
         module="query",
-        target="localhost:50051",
+        server_address="localhost:50051",
         entity_id="meter-1",
         series="power",
         start=datetime(1970, 1, 1, tzinfo=UTC),

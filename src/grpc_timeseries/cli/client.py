@@ -83,7 +83,7 @@ def _run_client_module(
     err=lambda text: print(text, file=sys.stderr),
 ) -> int:
     try:
-        with grpc.insecure_channel(args.target) as channel:
+        with grpc.insecure_channel(args.server_address) as channel:
             grpc.channel_ready_future(channel).result(timeout=5)
             client = timeseries_pb2_grpc.TimeSeriesStub(channel)
 
@@ -177,35 +177,33 @@ def _run_client_module(
         err(f"gRPC request failed: {exc.code().name} {exc.details()}")
         return 1
     except grpc.FutureTimeoutError:
-        err(f"Could not connect to gRPC server at {args.target}")
+        err(f"Could not connect to gRPC server at {args.server_address}")
         return 1
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--version", action="store_true")
-    parser.add_argument("--target", default="localhost:50051")
-    parser.add_argument("--entity-id", dest="entity_id", default="entity-1234", metavar="ENTITY_ID")
-    parser.add_argument("--series", default="consumed_kwh")
-    parser.add_argument(
-        "--timestamp",
-        type=_parse_datetime,
-        default=_parse_datetime("2024-08-30T05:20:00Z"),
-        help="ISO 8601 datetime with timezone for get, set, update, or delete modules",
-    )
-    parser.add_argument("module", choices=["serve", "get", "set", "update", "delete", "query", "version"], nargs="?", default="serve")
+    parser.add_argument("--version", action="store_true",
+                        help="Show the version of the client")
+    parser.add_argument("--server-address", default="localhost:50051",
+                        help="Address of the gRPC server")
+    parser.add_argument("--entity-id", dest="entity_id", default="entity-1234",
+                        help="ID of the entity for get, set, update, or delete modules")
+    parser.add_argument("--series", default="consumed_kwh",
+                        help="Name of the time series for get, set, update, or delete modules")
+    parser.add_argument("--timestamp", type=_parse_datetime,
+                        default=_parse_datetime("2024-08-30T05:20:00Z"),
+                        help="ISO 8601 datetime with timezone for get, set, update, or delete modules")
+    parser.add_argument("module", choices=["serve", "get", "set", "update", "delete", "query", "version"],
+                        nargs="?", default="serve",
+                        help="Module to run (serve, get, set, update, delete, query, version)")
     parser.add_argument("--value", type=float, help="Value for set or update module")
-    parser.add_argument(
-        "--start",
-        type=_parse_datetime,
-        help="Inclusive ISO 8601 start datetime with timezone for query module",
-    )
-    parser.add_argument(
-        "--end",
-        type=_parse_datetime,
-        help="Inclusive ISO 8601 end datetime with timezone for query module",
-    )
-    parser.add_argument("--limit", type=int, default=0, help="Limit number of results for query module (0 = no limit)")
+    parser.add_argument("--start", type=_parse_datetime, 
+                        help="ISO 8601 start datetime with timezone for query module")
+    parser.add_argument("--end", type=_parse_datetime,
+                        help="ISO 8601 end datetime with timezone for query module")
+    parser.add_argument("--limit", type=int, default=0,
+                        help="Limit number of results for query module (0 = no limit)")
     return parser
 
 
