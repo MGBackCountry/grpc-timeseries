@@ -7,7 +7,7 @@ from pathlib import Path
 
 def main() -> int:
     forwarded_args = sys.argv[1:]
-    actions = {"serve", "get", "set", "update", "delete", "query", "version"}
+    modules = {"serve", "get", "set", "update", "delete", "query", "version"}
     options_with_values = {
         "--target",
         "--meter-id",
@@ -18,18 +18,18 @@ def main() -> int:
         "--end",
         "--limit",
     }
-    action_provided = False
+    module_provided = False
     skip_next = False
     for arg in forwarded_args:
         if skip_next:
             skip_next = False
         elif arg in options_with_values:
             skip_next = True
-        elif arg in actions:
-            action_provided = True
+        elif arg in modules:
+            module_provided = True
             break
 
-    if not action_provided:
+    if not module_provided:
         forwarded_args = ["get", *forwarded_args]
 
     repo_root = Path(__file__).resolve().parents[1]

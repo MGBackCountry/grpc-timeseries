@@ -88,7 +88,7 @@ uv run python -m grpc_timeseries
 ### Run a quick client call through the same entrypoint
 
 Use the same module entrypoint as a simple CLI client. Single-entry
-actions accept `--timestamp`, and range queries accept `--start` and `--end`, as ISO 8601
+module accept `--timestamp`, and range queries accept `--start` and `--end`, as ISO 8601
 datetimes with a timezone.
 
 #### Get a single entry

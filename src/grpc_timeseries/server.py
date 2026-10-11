@@ -14,7 +14,7 @@ from .cli.client import (
     _format_timestamp,
     _format_timestamp_ms,
     _parse_datetime,
-    _run_client_action,
+    _run_client_module,
     _timestamp_from_datetime,
     _timestamp_from_milliseconds,
     _timestamp_to_milliseconds,
@@ -51,9 +51,9 @@ def serve(
         out(APP_VERSION)
         return 0
 
-    action = getattr(args, "action", "serve")
-    if action in {"get", "set", "update", "delete", "query", "version"}:
-        return _run_client_action(args, out=out)
+    module = getattr(args, "module", "serve")
+    if module in {"get", "set", "update", "delete", "query", "version"}:
+        return _run_client_module(args, out=out)
 
     grpc_server = grpc_server_factory()
     servicer = servicer_factory()
@@ -83,7 +83,7 @@ __all__ = [
     "_format_timestamp",
     "_format_timestamp_ms",
     "_parse_datetime",
-    "_run_client_action",
+    "_run_client_module",
     "_timestamp_from_datetime",
     "_timestamp_from_milliseconds",
     "_timestamp_to_milliseconds",

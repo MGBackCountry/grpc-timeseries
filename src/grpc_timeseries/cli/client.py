@@ -77,7 +77,7 @@ def _client_build_entry(args: argparse.Namespace) -> timeseries_pb2.Entry:
     )
 
 
-def _run_client_action(
+def _run_client_module(
     args: argparse.Namespace,
     out=print,
     err=lambda text: print(text, file=sys.stderr),
@@ -87,7 +87,7 @@ def _run_client_action(
             grpc.channel_ready_future(channel).result(timeout=5)
             client = timeseries_pb2_grpc.TimeSeriesStub(channel)
 
-            match args.action:
+            match args.module:
                 case "get":
                     get_reply = client.GetEntry(
                         timeseries_pb2.GetEntryRequest(
@@ -111,7 +111,7 @@ def _run_client_action(
 
                 case "set":
                     if args.value is None:
-                        err("--value is required for the set action")
+                        err("--value is required for the set module")
                         return 1
                     set_reply = client.SetEntry(
                         timeseries_pb2.SetEntryRequest(entry=_client_build_entry(args))
@@ -121,7 +121,7 @@ def _run_client_action(
 
                 case "update":
                     if args.value is None:
-                        err("--value is required for the update action")
+                        err("--value is required for the update module")
                         return 1
                     update_reply = client.UpdateEntry(
                         timeseries_pb2.UpdateEntryRequest(entry=_client_build_entry(args))
@@ -147,7 +147,7 @@ def _run_client_action(
                     end = getattr(args, "end", None)
                     limit = getattr(args, "limit", 0)
                     if start is None or end is None:
-                        err("--start and --end are required for the query action")
+                        err("--start and --end are required for the query module")
                         return 1
                     query_reply = client.QueryRange(
                         timeseries_pb2.QueryRangeRequest(
@@ -169,10 +169,10 @@ def _run_client_action(
                     return 0
 
                 case _:
-                    err(f"Unsupported action: {args.action}")
+                    err(f"Unsupported module: {args.module}")
                     return 1
 
-            raise AssertionError("unreachable action branch")
+            raise AssertionError("unreachable module branch")
     except grpc.RpcError as exc:
         err(f"gRPC request failed: {exc.code().name} {exc.details()}")
         return 1
@@ -191,21 +191,21 @@ def build_parser() -> argparse.ArgumentParser:
         "--timestamp",
         type=_parse_datetime,
         default=_parse_datetime("2024-08-30T05:20:00Z"),
-        help="ISO 8601 datetime with timezone for get, set, update, or delete actions",
+        help="ISO 8601 datetime with timezone for get, set, update, or delete modules",
     )
-    parser.add_argument("action", choices=["serve", "get", "set", "update", "delete", "query", "version"], nargs="?", default="serve")
-    parser.add_argument("--value", type=float, help="Value for set or update action")
+    parser.add_argument("module", choices=["serve", "get", "set", "update", "delete", "query", "version"], nargs="?", default="serve")
+    parser.add_argument("--value", type=float, help="Value for set or update module")
     parser.add_argument(
         "--start",
         type=_parse_datetime,
-        help="Inclusive ISO 8601 start datetime with timezone for query action",
+        help="Inclusive ISO 8601 start datetime with timezone for query module",
     )
     parser.add_argument(
         "--end",
         type=_parse_datetime,
-        help="Inclusive ISO 8601 end datetime with timezone for query action",
+        help="Inclusive ISO 8601 end datetime with timezone for query module",
     )
-    parser.add_argument("--limit", type=int, default=0, help="Limit number of results for query action (0 = no limit)")
+    parser.add_argument("--limit", type=int, default=0, help="Limit number of results for query module (0 = no limit)")
     return parser
 
 
@@ -217,7 +217,7 @@ __all__ = [
     "_format_timestamp",
     "_format_timestamp_ms",
     "_parse_datetime",
-    "_run_client_action",
+    "_run_client_module",
     "_timestamp_from_datetime",
     "_timestamp_from_milliseconds",
     "_timestamp_to_milliseconds",
