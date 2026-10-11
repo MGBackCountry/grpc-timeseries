@@ -317,7 +317,7 @@ def test_build_parser_includes_client_arguments():
     parser = server.build_parser()
 
     args = parser.parse_args(
-        ["--action", "set", "--value", "42.5", "--timestamp", "2024-01-15T10:30:00Z"]
+        ["set", "--value", "42.5", "--timestamp", "2024-01-15T10:30:00Z"]
     )
 
     assert args.action == "set"
@@ -361,7 +361,6 @@ def test_build_parser_includes_query_arguments():
 
     args = parser.parse_args(
         [
-            "--action",
             "query",
             "--start",
             "2024-01-15T10:30:00Z",
@@ -553,9 +552,9 @@ def test_run_client_action_query_missing_start():
         end=datetime(1970, 1, 1, tzinfo=UTC),
         limit=0,
     )
-    
-    result = server._run_client_action(args, err=lambda x: None)
-    
+
+    result = server._run_client_action(args, err=lambda _: None)
+
     assert result == 1
 
 
@@ -569,7 +568,7 @@ def test_run_client_action_query_missing_end():
         end=None,
         limit=0,
     )
-    
-    result = server._run_client_action(args, err=lambda x: None)
-    
+
+    result = server._run_client_action(args, err=lambda _: None)
+
     assert result == 1

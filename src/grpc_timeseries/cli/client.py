@@ -111,7 +111,7 @@ def _run_client_action(
 
                 case "set":
                     if args.value is None:
-                        err("--value is required when --action is set")
+                        err("--value is required for the set action")
                         return 1
                     set_reply = client.SetEntry(
                         timeseries_pb2.SetEntryRequest(entry=_client_build_entry(args))
@@ -121,7 +121,7 @@ def _run_client_action(
 
                 case "update":
                     if args.value is None:
-                        err("--value is required when --action is update")
+                        err("--value is required for the update action")
                         return 1
                     update_reply = client.UpdateEntry(
                         timeseries_pb2.UpdateEntryRequest(entry=_client_build_entry(args))
@@ -147,7 +147,7 @@ def _run_client_action(
                     end = getattr(args, "end", None)
                     limit = getattr(args, "limit", 0)
                     if start is None or end is None:
-                        err("--start and --end are required when --action is query")
+                        err("--start and --end are required for the query action")
                         return 1
                     query_reply = client.QueryRange(
                         timeseries_pb2.QueryRangeRequest(
@@ -193,7 +193,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=_parse_datetime("2024-08-30T05:20:00Z"),
         help="ISO 8601 datetime with timezone for get, set, update, or delete actions",
     )
-    parser.add_argument("--action", choices=["serve", "get", "set", "update", "delete", "query", "version"], default="serve")
+    parser.add_argument("action", choices=["serve", "get", "set", "update", "delete", "query", "version"], nargs="?", default="serve")
     parser.add_argument("--value", type=float, help="Value for set or update action")
     parser.add_argument(
         "--start",

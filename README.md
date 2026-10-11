@@ -87,38 +87,38 @@ uv run python -m grpc_timeseries
 
 ### Run a quick client call through the same entrypoint
 
-Use the same module entrypoint as a simple CLI client by passing `--action`. Single-entry
+Use the same module entrypoint as a simple CLI client. Single-entry
 actions accept `--timestamp`, and range queries accept `--start` and `--end`, as ISO 8601
 datetimes with a timezone.
 
 #### Get a single entry
 ```bash
-uv run python -m grpc_timeseries --action get --meter-id demo-meter --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z
+uv run python -m grpc_timeseries get --meter-id demo-meter --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z
 ```
 
 #### Set a new entry
 ```bash
-uv run python -m grpc_timeseries --action set --meter-id demo-meter --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z --value 12.5
+uv run python -m grpc_timeseries set --meter-id demo-meter --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z --value 12.5
 ```
 
 #### Update an existing entry
 ```bash
-uv run python -m grpc_timeseries --action update --meter-id demo-meter --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z --value 18.75
+uv run python -m grpc_timeseries update --meter-id demo-meter --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z --value 18.75
 ```
 
 #### Delete an entry
 ```bash
-uv run python -m grpc_timeseries --action delete --meter-id demo-meter --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z
+uv run python -m grpc_timeseries delete --meter-id demo-meter --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z
 ```
 
 #### Query a range of entries
 ```bash
-uv run python -m grpc_timeseries --action query --meter-id demo-meter --stream consumed_kwh --start 2024-08-30T05:20:00Z --end 2024-08-31T05:20:00Z --limit 10
+uv run python -m grpc_timeseries query --meter-id demo-meter --stream consumed_kwh --start 2024-08-30T05:20:00Z --end 2024-08-31T05:20:00Z --limit 10
 ```
 
 #### Get server version
 ```bash
-uv run python -m grpc_timeseries --action version
+uv run python -m grpc_timeseries version
 ```
 
 `scripts/local_client.py` is a compatibility wrapper that executes the installed
@@ -127,7 +127,7 @@ generated protobuf bindings on the host:
 
 ```bash
 docker compose up -d
-uv run scripts/local_client.py --version
+uv run scripts/local_client.py version
 ```
 
 The server reads these environment variables:
