@@ -15,7 +15,7 @@ service TimeSeries {
 }
 
 message EntryKey {
-  string meter_id = 1;          // bv "home" of "meter-001"
+  string entity_id = 1;          // bv "home" of "meter-001"
   string stream = 2;            // bv "consumed_kwh" of "produced_kwh"
   google.protobuf.Timestamp timestamp_ms = 3; // date-time, converted to epoch millis by the server
 }
@@ -47,7 +47,7 @@ message DeleteEntryRequest {
 }
 
 message QueryRangeRequest {
-  string meter_id = 1;
+  string entity_id = 1;
   string stream = 2;
   int64 start_ms = 3;           // inclusive
   int64 end_ms = 4;             // inclusive

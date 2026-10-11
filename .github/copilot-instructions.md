@@ -22,13 +22,13 @@ This repository is a small Python gRPC service backed by Redis.
 - Generated protobuf and gRPC bindings live in `src/grpc_timeseries/generated/` and are consumed by the runtime server code in `src/grpc_timeseries/server.py`. They are ignored by Git (other than `__init__.py`) and must be regenerated after contract changes.
 - `grpc_timeseries.server:serve` is the package entry point. It reads `GRPC_PORT` from `config.py`, creates the gRPC server, and registers `TimeSeriesServicer`; the Compose service supplies the Redis host and port through environment variables.
 - `TimeSeriesServicer` depends on the `TimeSeriesStore` protocol rather than a concrete Redis client. Each RPC translates protobuf requests into store operations and maps results back into protobuf replies, which lets direct-servicer and gRPC-client tests inject `FakeRedisStore`.
-- `RedisTimeSeriesStore` stores one logical time series per `(meter_id, stream)` pair using two Redis structures: a sorted set for timestamp ordering and a hash for timestamp-to-value lookup. Range queries read ordered timestamps from the sorted set, then fetch values from the hash.
+- `RedisTimeSeriesStore` stores one logical time series per `(entity_id, stream)` pair using two Redis structures: a sorted set for timestamp ordering and a hash for timestamp-to-value lookup. Range queries read ordered timestamps from the sorted set, then fetch values from the hash.
 - Docker Compose is the end-to-end runtime shape: a Redis container plus the Python gRPC server container, with the server resolving Redis by service name `redis`.
 
 ## Key conventions
 
 - Timestamp handling is always epoch milliseconds (`timestamp_ms`, `start_ms`, `end_ms`) and range queries are inclusive on both ends.
-- A time series is keyed by the pair `(meter_id, stream)` everywhere: in protobuf messages, in the Redis key layout, and in tests. Do not collapse different streams for the same meter into one series.
+- A time series is keyed by the pair `(entity_id, stream)` everywhere: in protobuf messages, in the Redis key layout, and in tests. Do not collapse different streams for the same meter into one series.
 - CRUD-style RPCs return status via protobuf payloads instead of gRPC status errors. In particular, missing records are modeled as `found=False` for `GetEntry` and `ok=False` with message `not_found` for update/delete paths.
 - `SetEntry` is idempotent only when a duplicate has the same value; a duplicate timestamp with a different value returns `ok=False, message="conflict"` and does not overwrite the stored point. Use `UpdateEntry` for intentional replacement.
 - Tests do not use a real Redis instance. `tests/test_server_integration.py` provides `FakeRedisStore`, and both the direct servicer tests and the real gRPC client/server tests rely on that fake store for fast, isolated coverage.

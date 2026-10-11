@@ -10,7 +10,7 @@ def main() -> int:
     modules = {"serve", "get", "set", "update", "delete", "query", "version"}
     options_with_values = {
         "--target",
-        "--meter-id",
+        "--entity-id",
         "--stream",
         "--timestamp",
         "--value",

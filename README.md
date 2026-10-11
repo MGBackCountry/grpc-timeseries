@@ -4,7 +4,7 @@ Small Python gRPC service for storing and querying energy time-series data in Re
 
 Each data point is identified by:
 
-- `meter_id`
+- `entity_id`
 - `stream`
 - `EntryKey.timestamp_ms` (a protobuf `Timestamp`)
 
@@ -18,14 +18,14 @@ The service exposes a `TimeSeries` gRPC API with CRUD-style operations for singl
 - `GetEntry` fetches one point by exact key
 - `UpdateEntry` updates an existing point and returns `not_found` if it does not exist
 - `DeleteEntry` removes an existing point and returns `not_found` if it does not exist
-- `QueryRange` returns points for one `(meter_id, stream)` series between two timestamps
+- `QueryRange` returns points for one `(entity_id, stream)` series between two timestamps
 - `GetVersion` returns the application version
 
 The API contract is defined in `protos/timeseries.proto`.
 
 ## Data model
 
-A time series is always scoped to the pair `(meter_id, stream)`. Different streams for the same meter are stored separately.
+A time series is always scoped to the pair `(entity_id, stream)`. Different streams for the same meter are stored separately.
 
 - `EntryKey.timestamp_ms` accepts a protobuf `Timestamp` date-time (for example, `2024-01-15T10:30:00Z`) and the server converts it to **epoch milliseconds** for storage
 - The protobuf `start_ms` and `end_ms` fields use **epoch milliseconds**; the CLI converts
@@ -46,10 +46,10 @@ Single-record read/update/delete operations report status in the protobuf respon
 1. A **sorted set** for timestamp ordering
 2. A **hash** for timestamp-to-value lookup
 
-For a `(meter_id, stream)` pair:
+For a `(entity_id, stream)` pair:
 
-- sorted set key: `energy:ts:{meter_id}:{stream}`
-- hash key: `energy:val:{meter_id}:{stream}`
+- sorted set key: `energy:ts:{entity_id}:{stream}`
+- hash key: `energy:val:{entity_id}:{stream}`
 
 Range queries read timestamps from the sorted set and then fetch matching values from the hash. The store also checks for drift between those two Redis structures and raises an error if they disagree about whether a point exists.
 
@@ -93,27 +93,27 @@ datetimes with a timezone.
 
 #### Get a single entry
 ```bash
-uv run python -m grpc_timeseries get --meter-id demo-meter --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z
+uv run python -m grpc_timeseries get --entity-id entity-1234 --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z
 ```
 
 #### Set a new entry
 ```bash
-uv run python -m grpc_timeseries set --meter-id demo-meter --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z --value 12.5
+uv run python -m grpc_timeseries set --entity-id entity-1234 --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z --value 12.5
 ```
 
 #### Update an existing entry
 ```bash
-uv run python -m grpc_timeseries update --meter-id demo-meter --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z --value 18.75
+uv run python -m grpc_timeseries update --entity-id entity-1234 --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z --value 18.75
 ```
 
 #### Delete an entry
 ```bash
-uv run python -m grpc_timeseries delete --meter-id demo-meter --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z
+uv run python -m grpc_timeseries delete --entity-id entity-1234 --stream consumed_kwh --timestamp 2024-08-30T05:20:00Z
 ```
 
 #### Query a range of entries
 ```bash
-uv run python -m grpc_timeseries query --meter-id demo-meter --stream consumed_kwh --start 2024-08-30T05:20:00Z --end 2024-08-31T05:20:00Z --limit 10
+uv run python -m grpc_timeseries query --entity-id entity-1234 --stream consumed_kwh --start 2024-08-30T05:20:00Z --end 2024-08-31T05:20:00Z --limit 10
 ```
 
 #### Get server version

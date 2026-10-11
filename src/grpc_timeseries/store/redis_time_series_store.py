@@ -15,24 +15,24 @@ class RedisTimeSeriesStore:
     def __init__(self):
         self.r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
-    def _zkey(self, meter_id: str, stream: str) -> str:
-        return f"energy:ts:{meter_id}:{stream}"
+    def _zkey(self, entity_id: str, stream: str) -> str:
+        return f"energy:ts:{entity_id}:{stream}"
 
-    def _hkey(self, meter_id: str, stream: str) -> str:
-        return f"energy:val:{meter_id}:{stream}"
+    def _hkey(self, entity_id: str, stream: str) -> str:
+        return f"energy:val:{entity_id}:{stream}"
 
-    def overwrite_point(self, meter_id: str, stream: str, ts_ms: int, value: float) -> None:
-        zkey = self._zkey(meter_id, stream)
-        hkey = self._hkey(meter_id, stream)
+    def overwrite_point(self, entity_id: str, stream: str, ts_ms: int, value: float) -> None:
+        zkey = self._zkey(entity_id, stream)
+        hkey = self._hkey(entity_id, stream)
         ts_field = str(ts_ms)
         pipe = self.r.pipeline()
         pipe.zadd(zkey, {ts_field: ts_ms})
         pipe.hset(hkey, ts_field, str(value))
         pipe.execute()
 
-    def create_point_if_absent(self, meter_id: str, stream: str, ts_ms: int, value: float) -> None:
-        zkey = self._zkey(meter_id, stream)
-        hkey = self._hkey(meter_id, stream)
+    def create_point_if_absent(self, entity_id: str, stream: str, ts_ms: int, value: float) -> None:
+        zkey = self._zkey(entity_id, stream)
+        hkey = self._hkey(entity_id, stream)
         ts_field = str(ts_ms)
 
         pipe = self.r.pipeline()
@@ -44,30 +44,30 @@ class RedisTimeSeriesStore:
 
         if hash_exists != sorted_exists:
             raise RedisStoreDriftError(
-                f"Point presence drift for meter_id={meter_id!r}, stream={stream!r}, timestamp_ms={ts_ms}: "
+                f"Point presence drift for entity_id={entity_id!r}, stream={stream!r}, timestamp_ms={ts_ms}: "
                 f"hash_exists={hash_exists}, sorted_set_exists={sorted_exists}"
             )
 
         if not hash_exists:
-            self.overwrite_point(meter_id, stream, ts_ms, value)
+            self.overwrite_point(entity_id, stream, ts_ms, value)
             return
 
         if float(existing_value) != float(value):
             raise PointConflictError(
-                f"Point already exists with different value for meter_id={meter_id!r}, "
+                f"Point already exists with different value for entity_id={entity_id!r}, "
                 f"stream={stream!r}, timestamp_ms={ts_ms}"
             )
 
-    def get_point(self, meter_id: str, stream: str, ts_ms: int) -> float:
-        hkey = self._hkey(meter_id, stream)
+    def get_point(self, entity_id: str, stream: str, ts_ms: int) -> float:
+        hkey = self._hkey(entity_id, stream)
         v = self.r.hget(hkey, str(ts_ms))
         if v is None:
-            raise KeyError(f"Point not found for meter_id={meter_id!r}, stream={stream!r}, timestamp_ms={ts_ms}")
+            raise KeyError(f"Point not found for entity_id={entity_id!r}, stream={stream!r}, timestamp_ms={ts_ms}")
         return float(v)
 
-    def _point_presence(self, meter_id: str, stream: str, ts_ms: int) -> bool:
-        zkey = self._zkey(meter_id, stream)
-        hkey = self._hkey(meter_id, stream)
+    def _point_presence(self, entity_id: str, stream: str, ts_ms: int) -> bool:
+        zkey = self._zkey(entity_id, stream)
+        hkey = self._hkey(entity_id, stream)
         ts_field = str(ts_ms)
         pipe = self.r.pipeline()
         pipe.hexists(hkey, ts_field)
@@ -77,21 +77,21 @@ class RedisTimeSeriesStore:
 
         if hash_exists != sorted_exists:
             raise RedisStoreDriftError(
-                f"Point presence drift for meter_id={meter_id!r}, stream={stream!r}, timestamp_ms={ts_ms}: "
+                f"Point presence drift for entity_id={entity_id!r}, stream={stream!r}, timestamp_ms={ts_ms}: "
                 f"hash_exists={hash_exists}, sorted_set_exists={sorted_exists}"
             )
 
         return hash_exists
 
-    def point_exists(self, meter_id: str, stream: str, ts_ms: int) -> bool:
-        return self._point_presence(meter_id, stream, ts_ms)
+    def point_exists(self, entity_id: str, stream: str, ts_ms: int) -> bool:
+        return self._point_presence(entity_id, stream, ts_ms)
 
-    def delete_existing_point(self, meter_id: str, stream: str, ts_ms: int) -> bool:
-        if not self._point_presence(meter_id, stream, ts_ms):
+    def delete_existing_point(self, entity_id: str, stream: str, ts_ms: int) -> bool:
+        if not self._point_presence(entity_id, stream, ts_ms):
             return False
 
-        zkey = self._zkey(meter_id, stream)
-        hkey = self._hkey(meter_id, stream)
+        zkey = self._zkey(entity_id, stream)
+        hkey = self._hkey(entity_id, stream)
         ts_field = str(ts_ms)
         pipe = self.r.pipeline()
         pipe.zrem(zkey, ts_field)
@@ -100,7 +100,7 @@ class RedisTimeSeriesStore:
 
         if zrem_count != 1 or hdel_count != 1:
             raise RedisStoreDriftError(
-                f"Point delete drift for meter_id={meter_id!r}, stream={stream!r}, timestamp_ms={ts_ms}: "
+                f"Point delete drift for entity_id={entity_id!r}, stream={stream!r}, timestamp_ms={ts_ms}: "
                 f"zrem_count={zrem_count}, hdel_count={hdel_count}"
             )
 
@@ -108,14 +108,14 @@ class RedisTimeSeriesStore:
 
     def get_points_in_range(
         self,
-        meter_id: str,
+        entity_id: str,
         stream: str,
         start_ms: int,
         end_ms: int,
         limit: int = 0,
     ) -> list[tuple[int, float]]:
-        zkey = self._zkey(meter_id, stream)
-        hkey = self._hkey(meter_id, stream)
+        zkey = self._zkey(entity_id, stream)
+        hkey = self._hkey(entity_id, stream)
 
         zrange_kwargs: dict[str, int] = {}
         if limit > 0:
@@ -131,7 +131,7 @@ class RedisTimeSeriesStore:
         for ts_str, v in zip(ts_fields, values):
             if v is None:
                 raise RedisStoreDriftError(
-                    f"Point value drift for meter_id={meter_id!r}, stream={stream!r}, "
+                    f"Point value drift for entity_id={entity_id!r}, stream={stream!r}, "
                     f"timestamp_ms={ts_str}: sorted set entry has no hash value"
                 )
             points.append((int(ts_str), float(v)))

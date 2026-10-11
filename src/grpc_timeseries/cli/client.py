@@ -55,10 +55,10 @@ def _format_timestamp_ms(timestamp_ms: int) -> str:
     )
 
 
-def _build_entry(meter_id: str, stream: str, timestamp_ms: int, value: float) -> timeseries_pb2.Entry:
+def _build_entry(entity_id: str, stream: str, timestamp_ms: int, value: float) -> timeseries_pb2.Entry:
     return timeseries_pb2.Entry(
         key=timeseries_pb2.EntryKey(
-            meter_id=meter_id,
+            entity_id=entity_id,
             stream=stream,
             timestamp_ms=_timestamp_from_milliseconds(timestamp_ms),
         ),
@@ -69,7 +69,7 @@ def _build_entry(meter_id: str, stream: str, timestamp_ms: int, value: float) ->
 def _client_build_entry(args: argparse.Namespace) -> timeseries_pb2.Entry:
     return timeseries_pb2.Entry(
         key=timeseries_pb2.EntryKey(
-            meter_id=args.meter_id,
+            entity_id=args.entity_id,
             stream=args.stream,
             timestamp_ms=_timestamp_from_datetime(args.timestamp),
         ),
@@ -92,7 +92,7 @@ def _run_client_module(
                     get_reply = client.GetEntry(
                         timeseries_pb2.GetEntryRequest(
                             key=timeseries_pb2.EntryKey(
-                                meter_id=args.meter_id,
+                                entity_id=args.entity_id,
                                 stream=args.stream,
                                 timestamp_ms=_timestamp_from_datetime(args.timestamp),
                             )
@@ -102,7 +102,7 @@ def _run_client_module(
                     if get_reply.found:
                         out(
                             "Entry:"
-                            f" meter_id={get_reply.entry.key.meter_id}"
+                            f" entity_id={get_reply.entry.key.entity_id}"
                             f" stream={get_reply.entry.key.stream}"
                             f" timestamp={_format_timestamp(get_reply.entry.key.timestamp_ms)}"
                             f" value={get_reply.entry.value}"
@@ -133,7 +133,7 @@ def _run_client_module(
                     delete_reply = client.DeleteEntry(
                         timeseries_pb2.DeleteEntryRequest(
                             key=timeseries_pb2.EntryKey(
-                                meter_id=args.meter_id,
+                                entity_id=args.entity_id,
                                 stream=args.stream,
                                 timestamp_ms=_timestamp_from_datetime(args.timestamp),
                             )
@@ -151,7 +151,7 @@ def _run_client_module(
                         return 1
                     query_reply = client.QueryRange(
                         timeseries_pb2.QueryRangeRequest(
-                            meter_id=args.meter_id,
+                            entity_id=args.entity_id,
                             stream=args.stream,
                             start_ms=_timestamp_to_milliseconds(_timestamp_from_datetime(start)),
                             end_ms=_timestamp_to_milliseconds(_timestamp_from_datetime(end)),
@@ -185,7 +185,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", action="store_true")
     parser.add_argument("--target", default="localhost:50051")
-    parser.add_argument("--meter-id", default="demo-meter")
+    parser.add_argument("--entity-id", dest="entity_id", default="entity-1234", metavar="ENTITY_ID")
     parser.add_argument("--stream", default="consumed_kwh")
     parser.add_argument(
         "--timestamp",

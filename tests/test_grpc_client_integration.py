@@ -64,7 +64,7 @@ class TestGrpcClientIntegration:
         request = timeseries_pb2.SetEntryRequest(
             entry=timeseries_pb2.Entry(
                 key=timeseries_pb2.EntryKey(
-                    meter_id="home-meter-001",
+                    entity_id="home-meter-001",
                     stream="consumed_kwh",
                     timestamp_ms=timestamp_datetime(timestamp_ms),
                 ),
@@ -82,7 +82,7 @@ class TestGrpcClientIntegration:
         request = timeseries_pb2.SetEntryRequest(
             entry=timeseries_pb2.Entry(
                 key=timeseries_pb2.EntryKey(
-                    meter_id="home-meter-001",
+                    entity_id="home-meter-001",
                     stream="consumed_kwh",
                     timestamp_ms=timestamp_datetime(timestamp_ms),
                 ),
@@ -103,7 +103,7 @@ class TestGrpcClientIntegration:
         first_request = timeseries_pb2.SetEntryRequest(
             entry=timeseries_pb2.Entry(
                 key=timeseries_pb2.EntryKey(
-                    meter_id="home-meter-001",
+                    entity_id="home-meter-001",
                     stream="consumed_kwh",
                     timestamp_ms=timestamp_datetime(timestamp_ms),
                 ),
@@ -113,7 +113,7 @@ class TestGrpcClientIntegration:
         second_request = timeseries_pb2.SetEntryRequest(
             entry=timeseries_pb2.Entry(
                 key=timeseries_pb2.EntryKey(
-                    meter_id="home-meter-001",
+                    entity_id="home-meter-001",
                     stream="consumed_kwh",
                     timestamp_ms=timestamp_datetime(timestamp_ms),
                 ),
@@ -132,17 +132,17 @@ class TestGrpcClientIntegration:
         """Test GetEntry RPC call."""
         _, _, fake_store = grpc_server_and_channel
         timestamp_ms = 1705318200000
-        meter_id = "home-meter-001"
+        entity_id = "home-meter-001"
         stream = "consumed_kwh"
         value = 42.5
 
         # Set data directly in the store
-        fake_store.overwrite_point(meter_id, stream, timestamp_ms, value)
+        fake_store.overwrite_point(entity_id, stream, timestamp_ms, value)
 
         # Retrieve via gRPC
         request = timeseries_pb2.GetEntryRequest(
             key=timeseries_pb2.EntryKey(
-                meter_id=meter_id,
+                entity_id=entity_id,
                 stream=stream,
                 timestamp_ms=timestamp_datetime(timestamp_ms),
             )
@@ -151,7 +151,7 @@ class TestGrpcClientIntegration:
         response = client.GetEntry(request)
 
         assert response.found is True
-        assert response.entry.key.meter_id == meter_id
+        assert response.entry.key.entity_id == entity_id
         assert response.entry.key.stream == stream
         assert response.entry.key.timestamp_ms.ToMilliseconds() == timestamp_ms
         assert response.entry.value == pytest.approx(value)
@@ -160,7 +160,7 @@ class TestGrpcClientIntegration:
         """Test GetEntry returns found=False for missing data."""
         request = timeseries_pb2.GetEntryRequest(
             key=timeseries_pb2.EntryKey(
-                meter_id="nonexistent-meter",
+                entity_id="nonexistent-meter",
                 stream="power",
                 timestamp_ms=timestamp_datetime(9999999),
             )
@@ -174,17 +174,17 @@ class TestGrpcClientIntegration:
         """Test UpdateEntry RPC call."""
         _, _, fake_store = grpc_server_and_channel
         timestamp_ms = 1705318200000
-        meter_id = "home-meter-001"
+        entity_id = "home-meter-001"
         stream = "produced_kwh"
 
         # Set initial value
-        fake_store.overwrite_point(meter_id, stream, timestamp_ms, 10.0)
+        fake_store.overwrite_point(entity_id, stream, timestamp_ms, 10.0)
 
         # Update via gRPC
         request = timeseries_pb2.UpdateEntryRequest(
             entry=timeseries_pb2.Entry(
                 key=timeseries_pb2.EntryKey(
-                    meter_id=meter_id,
+                    entity_id=entity_id,
                     stream=stream,
                     timestamp_ms=timestamp_datetime(timestamp_ms),
                 ),
@@ -200,7 +200,7 @@ class TestGrpcClientIntegration:
         # Verify the update
         get_request = timeseries_pb2.GetEntryRequest(
             key=timeseries_pb2.EntryKey(
-                meter_id=meter_id,
+                entity_id=entity_id,
                 stream=stream,
                 timestamp_ms=timestamp_datetime(timestamp_ms),
             )
@@ -213,7 +213,7 @@ class TestGrpcClientIntegration:
         request = timeseries_pb2.UpdateEntryRequest(
             entry=timeseries_pb2.Entry(
                 key=timeseries_pb2.EntryKey(
-                    meter_id="nonexistent",
+                    entity_id="nonexistent",
                     stream="power",
                     timestamp_ms=timestamp_datetime(1000),
                 ),
@@ -230,16 +230,16 @@ class TestGrpcClientIntegration:
         """Test DeleteEntry RPC call."""
         _, _, fake_store = grpc_server_and_channel
         timestamp_ms = 1705318200000
-        meter_id = "home-meter-001"
+        entity_id = "home-meter-001"
         stream = "consumed_kwh"
 
         # Set initial value
-        fake_store.overwrite_point(meter_id, stream, timestamp_ms, 42.5)
+        fake_store.overwrite_point(entity_id, stream, timestamp_ms, 42.5)
 
         # Delete via gRPC
         request = timeseries_pb2.DeleteEntryRequest(
             key=timeseries_pb2.EntryKey(
-                meter_id=meter_id,
+                entity_id=entity_id,
                 stream=stream,
                 timestamp_ms=timestamp_datetime(timestamp_ms),
             )
@@ -253,7 +253,7 @@ class TestGrpcClientIntegration:
         # Verify deletion
         get_request = timeseries_pb2.GetEntryRequest(
             key=timeseries_pb2.EntryKey(
-                meter_id=meter_id,
+                entity_id=entity_id,
                 stream=stream,
                 timestamp_ms=timestamp_datetime(timestamp_ms),
             )
@@ -265,7 +265,7 @@ class TestGrpcClientIntegration:
         """Test DeleteEntry fails when entry doesn't exist."""
         request = timeseries_pb2.DeleteEntryRequest(
             key=timeseries_pb2.EntryKey(
-                meter_id="nonexistent",
+                entity_id="nonexistent",
                 stream="power",
                 timestamp_ms=timestamp_datetime(1000),
             )
@@ -284,7 +284,7 @@ class TestGrpcClientIntegration:
         # Data points every hour for a 24-hour period starting at 2024-01-15 00:00:00 UTC
         base_timestamp = 1705276800000  # 2024-01-15 00:00:00 UTC
 
-        meter_id = "home-meter-001"
+        entity_id = "home-meter-001"
         stream = "consumed_kwh"
 
         # Realistic hourly power consumption pattern (kWh per hour)
@@ -319,14 +319,14 @@ class TestGrpcClientIntegration:
         # Populate fake store with hourly data
         for hour, consumption in enumerate(hourly_consumption):
             timestamp = base_timestamp + (hour * 3600 * 1000)  # Convert to milliseconds
-            fake_store.overwrite_point(meter_id, stream, timestamp, consumption)
+            fake_store.overwrite_point(entity_id, stream, timestamp, consumption)
 
         # Query the entire day
         start_timestamp = base_timestamp
         end_timestamp = base_timestamp + (24 * 3600 * 1000) - 1  # End of day
 
         request = timeseries_pb2.QueryRangeRequest(
-            meter_id=meter_id,
+            entity_id=entity_id,
             stream=stream,
             start_ms=start_timestamp,
             end_ms=end_timestamp,
@@ -358,18 +358,18 @@ class TestGrpcClientIntegration:
         """Test QueryRange with limit parameter."""
         _, _, fake_store = grpc_server_and_channel
 
-        meter_id = "home-meter-002"
+        entity_id = "home-meter-002"
         stream = "produced_kwh"
         base_timestamp = 1705276800000
 
         # Add 10 data points
         for i in range(10):
             timestamp = base_timestamp + (i * 3600 * 1000)
-            fake_store.overwrite_point(meter_id, stream, timestamp, float(i + 1) * 0.5)
+            fake_store.overwrite_point(entity_id, stream, timestamp, float(i + 1) * 0.5)
 
         # Query with limit=5
         request = timeseries_pb2.QueryRangeRequest(
-            meter_id=meter_id,
+            entity_id=entity_id,
             stream=stream,
             start_ms=base_timestamp,
             end_ms=base_timestamp + (10 * 3600 * 1000),
@@ -386,14 +386,14 @@ class TestGrpcClientIntegration:
         """Test QueryRange includes points exactly on both boundaries."""
         _, _, fake_store = grpc_server_and_channel
 
-        meter_id = "home-meter-003"
+        entity_id = "home-meter-003"
         stream = "consumed_kwh"
-        fake_store.overwrite_point(meter_id, stream, 1000, 1.0)
-        fake_store.overwrite_point(meter_id, stream, 2000, 2.0)
-        fake_store.overwrite_point(meter_id, stream, 3000, 3.0)
+        fake_store.overwrite_point(entity_id, stream, 1000, 1.0)
+        fake_store.overwrite_point(entity_id, stream, 2000, 2.0)
+        fake_store.overwrite_point(entity_id, stream, 3000, 3.0)
 
         request = timeseries_pb2.QueryRangeRequest(
-            meter_id=meter_id,
+            entity_id=entity_id,
             stream=stream,
             start_ms=1000,
             end_ms=3000,
@@ -412,13 +412,13 @@ class TestGrpcClientIntegration:
         """Test QueryRange treats negative limits like no limit."""
         _, _, fake_store = grpc_server_and_channel
 
-        meter_id = "home-meter-004"
+        entity_id = "home-meter-004"
         stream = "produced_kwh"
         for index, value in enumerate((0.5, 1.0, 1.5), start=1):
-            fake_store.overwrite_point(meter_id, stream, index * 1000, value)
+            fake_store.overwrite_point(entity_id, stream, index * 1000, value)
 
         request = timeseries_pb2.QueryRangeRequest(
-            meter_id=meter_id,
+            entity_id=entity_id,
             stream=stream,
             start_ms=0,
             end_ms=9999,
@@ -433,7 +433,7 @@ class TestGrpcClientIntegration:
     def test_get_points_in_range_empty_result(self, client):
         """Test QueryRange returns empty list when no data matches."""
         request = timeseries_pb2.QueryRangeRequest(
-            meter_id="nonexistent-meter",
+            entity_id="nonexistent-meter",
             stream="power",
             start_ms=1000,
             end_ms=2000,
@@ -457,7 +457,7 @@ class TestGrpcClientIntegration:
         meter1_consumed_request = timeseries_pb2.SetEntryRequest(
             entry=timeseries_pb2.Entry(
                 key=timeseries_pb2.EntryKey(
-                    meter_id="household-1",
+                    entity_id="household-1",
                     stream="consumed_kwh",
                     timestamp_ms=timestamp_datetime(timestamp),
                 ),
@@ -471,7 +471,7 @@ class TestGrpcClientIntegration:
         meter1_produced_request = timeseries_pb2.SetEntryRequest(
             entry=timeseries_pb2.Entry(
                 key=timeseries_pb2.EntryKey(
-                    meter_id="household-1",
+                    entity_id="household-1",
                     stream="produced_kwh",
                     timestamp_ms=timestamp_datetime(timestamp),
                 ),
@@ -485,7 +485,7 @@ class TestGrpcClientIntegration:
         meter2_consumed_request = timeseries_pb2.SetEntryRequest(
             entry=timeseries_pb2.Entry(
                 key=timeseries_pb2.EntryKey(
-                    meter_id="household-2",
+                    entity_id="household-2",
                     stream="consumed_kwh",
                     timestamp_ms=timestamp_datetime(timestamp),
                 ),
@@ -497,7 +497,7 @@ class TestGrpcClientIntegration:
 
         # Query household 1 consumption
         query_h1 = timeseries_pb2.QueryRangeRequest(
-            meter_id="household-1",
+            entity_id="household-1",
             stream="consumed_kwh",
             start_ms=timestamp - 1000,
             end_ms=timestamp + 1000,
@@ -509,7 +509,7 @@ class TestGrpcClientIntegration:
 
         # Query household 1 production
         query_h1_prod = timeseries_pb2.QueryRangeRequest(
-            meter_id="household-1",
+            entity_id="household-1",
             stream="produced_kwh",
             start_ms=timestamp - 1000,
             end_ms=timestamp + 1000,
@@ -521,7 +521,7 @@ class TestGrpcClientIntegration:
 
         # Query household 2 consumption
         query_h2 = timeseries_pb2.QueryRangeRequest(
-            meter_id="household-2",
+            entity_id="household-2",
             stream="consumed_kwh",
             start_ms=timestamp - 1000,
             end_ms=timestamp + 1000,

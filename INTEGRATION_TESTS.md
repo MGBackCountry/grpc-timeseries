@@ -30,7 +30,7 @@ Tests setting energy meter data via the `SetEntry` RPC.
 request = timeseries_pb2.SetEntryRequest(
     entry=timeseries_pb2.Entry(
         key=timeseries_pb2.EntryKey(
-            meter_id="home-meter-001",
+            entity_id="home-meter-001",
             stream="consumed_kwh",
             timestamp_ms=1705318200000,
         ),
@@ -48,7 +48,7 @@ Tests retrieving a single energy meter data point via `GetEntry` RPC.
 # Retrieve previously stored consumption data
 request = timeseries_pb2.GetEntryRequest(
     key=timeseries_pb2.EntryKey(
-        meter_id="home-meter-001",
+        entity_id="home-meter-001",
         stream="consumed_kwh",
         timestamp_ms=1705318200000,
     )
@@ -68,7 +68,7 @@ Tests updating existing meter data via `UpdateEntry` RPC.
 # Update solar production value from 10.0 to 25.5 kWh
 request = timeseries_pb2.UpdateEntryRequest(
     entry=timeseries_pb2.Entry(
-        key=timeseries_pb2.EntryKey(meter_id="home-meter-001", stream="produced_kwh", ...),
+        key=timeseries_pb2.EntryKey(entity_id="home-meter-001", stream="produced_kwh", ...),
         value=25.5,
     )
 )
@@ -127,7 +127,7 @@ Tests the `QueryRange` RPC with a limit parameter.
 ```python
 # Add 10 data points, query with limit=5
 request = timeseries_pb2.QueryRangeRequest(
-    meter_id="home-meter-002",
+    entity_id="home-meter-002",
     stream="produced_kwh",
     start_ms=base_timestamp,
     end_ms=base_timestamp + (10 * 3600 * 1000),
@@ -195,7 +195,7 @@ The tests use the following energy meter data model:
 
 ```protobuf
 message EntryKey {
-  string meter_id          // e.g., "home-meter-001", "household-1"
+  string entity_id          // e.g., "home-meter-001", "household-1"
   string stream            // e.g., "consumed_kwh", "produced_kwh"
   int64 timestamp_ms       // milliseconds since epoch
 }
@@ -207,7 +207,7 @@ message Entry {
 ```
 
 ### Example Scenarios:
-- **meter_id**: `"home-meter-001"`, `"household-1"`, `"apartment-2B"`
+- **entity_id**: `"home-meter-001"`, `"household-1"`, `"apartment-2B"`
 - **stream**: `"consumed_kwh"` (grid consumption), `"produced_kwh"` (solar production)
 - **timestamp_ms**: `1705318200000` (2024-01-15 10:30:00 UTC)
 - **value**: `42.5` kWh

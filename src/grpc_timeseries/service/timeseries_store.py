@@ -12,22 +12,22 @@ APP_VERSION = __version__
 
 class TimeSeriesStore(Protocol):
     def overwrite_point(
-        self, meter_id: str, stream: str, ts_ms: int, value: float) -> None: pass
+        self, entity_id: str, stream: str, ts_ms: int, value: float) -> None: pass
 
     def create_point_if_absent(
-        self, meter_id: str, stream: str, ts_ms: int, value: float)-> None: pass
+        self, entity_id: str, stream: str, ts_ms: int, value: float)-> None: pass
 
     def get_point(
-        self, meter_id: str, stream: str, ts_ms: int) -> float: pass
+        self, entity_id: str, stream: str, ts_ms: int) -> float: pass
 
     def point_exists(
-        self, meter_id: str, stream: str, ts_ms: int) -> bool: pass
+        self, entity_id: str, stream: str, ts_ms: int) -> bool: pass
 
     def delete_existing_point(
-        self, meter_id: str, stream: str, ts_ms: int) -> bool: pass
+        self, entity_id: str, stream: str, ts_ms: int) -> bool: pass
 
     def get_points_in_range(
-        self, meter_id: str, stream: str, start_ms: int, end_ms: int,
+        self, entity_id: str, stream: str, start_ms: int, end_ms: int,
         limit: int = 0) -> list[Point]: pass
 
 
@@ -45,10 +45,10 @@ def _timestamp_from_milliseconds(timestamp_ms: int):
     return protobuf_timestamp
 
 
-def _build_entry(meter_id: str, stream: str, timestamp_ms: int, value: float) -> timeseries_pb2.Entry:
+def _build_entry(entity_id: str, stream: str, timestamp_ms: int, value: float) -> timeseries_pb2.Entry:
     return timeseries_pb2.Entry(
         key=timeseries_pb2.EntryKey(
-            meter_id=meter_id,
+            entity_id=entity_id,
             stream=stream,
             timestamp_ms=_timestamp_from_milliseconds(timestamp_ms),
         ),
@@ -70,7 +70,7 @@ class TimeSeriesServicer(timeseries_pb2_grpc.TimeSeriesServicer):
         k = e.key
         timestamp_ms = _timestamp_to_milliseconds(k.timestamp_ms)
         try:
-            self.store.create_point_if_absent(k.meter_id, k.stream, timestamp_ms, e.value)
+            self.store.create_point_if_absent(k.entity_id, k.stream, timestamp_ms, e.value)
         except PointConflictError:
             return timeseries_pb2.StatusReply(ok=False, message="conflict")
 
@@ -80,10 +80,10 @@ class TimeSeriesServicer(timeseries_pb2_grpc.TimeSeriesServicer):
         del context
         k = request.key
         timestamp_ms = _timestamp_to_milliseconds(k.timestamp_ms)
-        v = self.store.get_point(k.meter_id, k.stream, timestamp_ms)
+        v = self.store.get_point(k.entity_id, k.stream, timestamp_ms)
         if v is None:
             return timeseries_pb2.GetEntryReply(found=False)
-        entry = _build_entry(k.meter_id, k.stream, timestamp_ms, v)
+        entry = _build_entry(k.entity_id, k.stream, timestamp_ms, v)
         return timeseries_pb2.GetEntryReply(found=True, entry=entry)
 
     def UpdateEntry(self, request: Any, context: Any) -> timeseries_pb2.StatusReply:
@@ -91,9 +91,9 @@ class TimeSeriesServicer(timeseries_pb2_grpc.TimeSeriesServicer):
         e = request.entry
         k = e.key
         timestamp_ms = _timestamp_to_milliseconds(k.timestamp_ms)
-        if not self.store.point_exists(k.meter_id, k.stream, timestamp_ms):
+        if not self.store.point_exists(k.entity_id, k.stream, timestamp_ms):
             return timeseries_pb2.StatusReply(ok=False, message="not_found")
-        self.store.overwrite_point(k.meter_id, k.stream, timestamp_ms, e.value)
+        self.store.overwrite_point(k.entity_id, k.stream, timestamp_ms, e.value)
 
         return timeseries_pb2.StatusReply(ok=True, message="updated")
 
@@ -101,13 +101,13 @@ class TimeSeriesServicer(timeseries_pb2_grpc.TimeSeriesServicer):
         del context
         k = request.key
         timestamp_ms = _timestamp_to_milliseconds(k.timestamp_ms)
-        ok = self.store.delete_existing_point(k.meter_id, k.stream, timestamp_ms)
+        ok = self.store.delete_existing_point(k.entity_id, k.stream, timestamp_ms)
         return timeseries_pb2.StatusReply(ok=ok, message="deleted" if ok else "not_found")
 
     def QueryRange(self, request: Any, context: Any) -> timeseries_pb2.QueryRangeReply:
         del context
         pts = self.store.get_points_in_range(
-            request.meter_id,
+            request.entity_id,
             request.stream,
             request.start_ms,
             request.end_ms,
