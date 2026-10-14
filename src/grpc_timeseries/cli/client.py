@@ -55,10 +55,10 @@ def _format_timestamp_ms(timestamp_ms: int) -> str:
     )
 
 
-def _build_entry(meter_id: str, stream: str, timestamp_ms: int, value: float) -> timeseries_pb2.Entry:
+def _build_entry(entity_id: str, stream: str, timestamp_ms: int, value: float) -> timeseries_pb2.Entry:
     return timeseries_pb2.Entry(
         key=timeseries_pb2.EntryKey(
-            meter_id=meter_id,
+            entity_id=entity_id,
             stream=stream,
             timestamp_ms=_timestamp_from_milliseconds(timestamp_ms),
         ),
@@ -69,31 +69,31 @@ def _build_entry(meter_id: str, stream: str, timestamp_ms: int, value: float) ->
 def _client_build_entry(args: argparse.Namespace) -> timeseries_pb2.Entry:
     return timeseries_pb2.Entry(
         key=timeseries_pb2.EntryKey(
-            meter_id=args.meter_id,
-            stream=args.stream,
+            entity_id=args.entity_id,
+            stream=args.series,
             timestamp_ms=_timestamp_from_datetime(args.timestamp),
         ),
         value=args.value,
     )
 
 
-def _run_client_action(
+def _run_client_module(
     args: argparse.Namespace,
     out=print,
     err=lambda text: print(text, file=sys.stderr),
 ) -> int:
     try:
-        with grpc.insecure_channel(args.target) as channel:
+        with grpc.insecure_channel(args.server_address) as channel:
             grpc.channel_ready_future(channel).result(timeout=5)
             client = timeseries_pb2_grpc.TimeSeriesStub(channel)
 
-            match args.action:
+            match args.module:
                 case "get":
                     get_reply = client.GetEntry(
                         timeseries_pb2.GetEntryRequest(
                             key=timeseries_pb2.EntryKey(
-                                meter_id=args.meter_id,
-                                stream=args.stream,
+                                entity_id=args.entity_id,
+                                stream=args.series,
                                 timestamp_ms=_timestamp_from_datetime(args.timestamp),
                             )
                         )
@@ -102,7 +102,7 @@ def _run_client_action(
                     if get_reply.found:
                         out(
                             "Entry:"
-                            f" meter_id={get_reply.entry.key.meter_id}"
+                            f" entity_id={get_reply.entry.key.entity_id}"
                             f" stream={get_reply.entry.key.stream}"
                             f" timestamp={_format_timestamp(get_reply.entry.key.timestamp_ms)}"
                             f" value={get_reply.entry.value}"
@@ -111,7 +111,7 @@ def _run_client_action(
 
                 case "set":
                     if args.value is None:
-                        err("--value is required when --action is set")
+                        err("--value is required for the set module")
                         return 1
                     set_reply = client.SetEntry(
                         timeseries_pb2.SetEntryRequest(entry=_client_build_entry(args))
@@ -121,7 +121,7 @@ def _run_client_action(
 
                 case "update":
                     if args.value is None:
-                        err("--value is required when --action is update")
+                        err("--value is required for the update module")
                         return 1
                     update_reply = client.UpdateEntry(
                         timeseries_pb2.UpdateEntryRequest(entry=_client_build_entry(args))
@@ -133,8 +133,8 @@ def _run_client_action(
                     delete_reply = client.DeleteEntry(
                         timeseries_pb2.DeleteEntryRequest(
                             key=timeseries_pb2.EntryKey(
-                                meter_id=args.meter_id,
-                                stream=args.stream,
+                                entity_id=args.entity_id,
+                                stream=args.series,
                                 timestamp_ms=_timestamp_from_datetime(args.timestamp),
                             )
                         )
@@ -147,12 +147,12 @@ def _run_client_action(
                     end = getattr(args, "end", None)
                     limit = getattr(args, "limit", 0)
                     if start is None or end is None:
-                        err("--start and --end are required when --action is query")
+                        err("--start and --end are required for the query module")
                         return 1
                     query_reply = client.QueryRange(
                         timeseries_pb2.QueryRangeRequest(
-                            meter_id=args.meter_id,
-                            stream=args.stream,
+                            entity_id=args.entity_id,
+                            stream=args.series,
                             start_ms=_timestamp_to_milliseconds(_timestamp_from_datetime(start)),
                             end_ms=_timestamp_to_milliseconds(_timestamp_from_datetime(end)),
                             limit=limit,
@@ -169,43 +169,41 @@ def _run_client_action(
                     return 0
 
                 case _:
-                    err(f"Unsupported action: {args.action}")
+                    err(f"Unsupported module: {args.module}")
                     return 1
 
-            raise AssertionError("unreachable action branch")
+            raise AssertionError("unreachable module branch")
     except grpc.RpcError as exc:
         err(f"gRPC request failed: {exc.code().name} {exc.details()}")
         return 1
     except grpc.FutureTimeoutError:
-        err(f"Could not connect to gRPC server at {args.target}")
+        err(f"Could not connect to gRPC server at {args.server_address}")
         return 1
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--version", action="store_true")
-    parser.add_argument("--target", default="localhost:50051")
-    parser.add_argument("--meter-id", default="demo-meter")
-    parser.add_argument("--stream", default="consumed_kwh")
-    parser.add_argument(
-        "--timestamp",
-        type=_parse_datetime,
-        default=_parse_datetime("2024-08-30T05:20:00Z"),
-        help="ISO 8601 datetime with timezone for get, set, update, or delete actions",
-    )
-    parser.add_argument("--action", choices=["serve", "get", "set", "update", "delete", "query", "version"], default="serve")
-    parser.add_argument("--value", type=float, help="Value for set or update action")
-    parser.add_argument(
-        "--start",
-        type=_parse_datetime,
-        help="Inclusive ISO 8601 start datetime with timezone for query action",
-    )
-    parser.add_argument(
-        "--end",
-        type=_parse_datetime,
-        help="Inclusive ISO 8601 end datetime with timezone for query action",
-    )
-    parser.add_argument("--limit", type=int, default=0, help="Limit number of results for query action (0 = no limit)")
+    parser.add_argument("--version", action="store_true",
+                        help="Show the version of the client")
+    parser.add_argument("--server-address", default="localhost:50051",
+                        help="Address of the gRPC server")
+    parser.add_argument("--entity-id", dest="entity_id", default="entity-1234",
+                        help="ID of the entity for get, set, update, or delete modules")
+    parser.add_argument("--series", default="consumed_kwh",
+                        help="Name of the time series for get, set, update, or delete modules")
+    parser.add_argument("--timestamp", type=_parse_datetime,
+                        default=_parse_datetime("2024-08-30T05:20:00Z"),
+                        help="ISO 8601 datetime with timezone for get, set, update, or delete modules")
+    parser.add_argument("module", choices=["serve", "get", "set", "update", "delete", "query", "version"],
+                        nargs="?", default="serve",
+                        help="Module to run (serve, get, set, update, delete, query, version)")
+    parser.add_argument("--value", type=float, help="Value for set or update module")
+    parser.add_argument("--start", type=_parse_datetime, 
+                        help="ISO 8601 start datetime with timezone for query module")
+    parser.add_argument("--end", type=_parse_datetime,
+                        help="ISO 8601 end datetime with timezone for query module")
+    parser.add_argument("--limit", type=int, default=0,
+                        help="Limit number of results for query module (0 = no limit)")
     return parser
 
 
@@ -217,7 +215,7 @@ __all__ = [
     "_format_timestamp",
     "_format_timestamp_ms",
     "_parse_datetime",
-    "_run_client_action",
+    "_run_client_module",
     "_timestamp_from_datetime",
     "_timestamp_from_milliseconds",
     "_timestamp_to_milliseconds",

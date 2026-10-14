@@ -6,10 +6,31 @@ from pathlib import Path
 
 
 def main() -> int:
-    # Keep backward compatibility: old script defaulted to --action get.
     forwarded_args = sys.argv[1:]
-    if not any(arg == "--action" or arg.startswith("--action=") for arg in forwarded_args):
-        forwarded_args = ["--action", "get", *forwarded_args]
+    modules = {"serve", "get", "set", "update", "delete", "query", "version"}
+    options_with_values = {
+        "--server-address",
+        "--entity-id",
+        "--series",
+        "--timestamp",
+        "--value",
+        "--start",
+        "--end",
+        "--limit",
+    }
+    module_provided = False
+    skip_next = False
+    for arg in forwarded_args:
+        if skip_next:
+            skip_next = False
+        elif arg in options_with_values:
+            skip_next = True
+        elif arg in modules:
+            module_provided = True
+            break
+
+    if not module_provided:
+        forwarded_args = ["get", *forwarded_args]
 
     repo_root = Path(__file__).resolve().parents[1]
     command = [

@@ -9,36 +9,36 @@ class FakeRedisStore:
     def __init__(self) -> None:
         self.data: dict[tuple[str, str, int], float] = {}
 
-    def _key(self, meter_id: str, stream: str, ts_ms: int) -> tuple[str, str, int]:
-        return meter_id, stream, ts_ms
+    def _key(self, entity_id: str, stream: str, ts_ms: int) -> tuple[str, str, int]:
+        return entity_id, stream, ts_ms
 
-    def overwrite_point(self, meter_id: str, stream: str, ts_ms: int, value: float) -> None:
-        self.data[self._key(meter_id, stream, ts_ms)] = float(value)
+    def overwrite_point(self, entity_id: str, stream: str, ts_ms: int, value: float) -> None:
+        self.data[self._key(entity_id, stream, ts_ms)] = float(value)
 
-    def create_point_if_absent(self, meter_id: str, stream: str, ts_ms: int, value: float) -> None:
-        key = self._key(meter_id, stream, ts_ms)
+    def create_point_if_absent(self, entity_id: str, stream: str, ts_ms: int, value: float) -> None:
+        key = self._key(entity_id, stream, ts_ms)
         if key not in self.data:
             self.data[key] = float(value)
             return
 
         if self.data[key] != float(value):
             raise PointConflictError(
-                f"Point already exists with different value for meter_id={meter_id!r}, "
+                f"Point already exists with different value for entity_id={entity_id!r}, "
                 f"stream={stream!r}, timestamp_ms={ts_ms}"
             )
 
-    def get_point(self, meter_id: str, stream: str, ts_ms: int) -> float | None:
-        return self.data.get(self._key(meter_id, stream, ts_ms))
+    def get_point(self, entity_id: str, stream: str, ts_ms: int) -> float | None:
+        return self.data.get(self._key(entity_id, stream, ts_ms))
 
-    def point_exists(self, meter_id: str, stream: str, ts_ms: int) -> bool:
-        return self._key(meter_id, stream, ts_ms) in self.data
+    def point_exists(self, entity_id: str, stream: str, ts_ms: int) -> bool:
+        return self._key(entity_id, stream, ts_ms) in self.data
 
-    def delete_existing_point(self, meter_id: str, stream: str, ts_ms: int) -> bool:
-        return self.data.pop(self._key(meter_id, stream, ts_ms), None) is not None
+    def delete_existing_point(self, entity_id: str, stream: str, ts_ms: int) -> bool:
+        return self.data.pop(self._key(entity_id, stream, ts_ms), None) is not None
 
     def get_points_in_range(
         self,
-        meter_id: str,
+        entity_id: str,
         stream: str,
         start_ms: int,
         end_ms: int,
@@ -46,7 +46,7 @@ class FakeRedisStore:
     ) -> list[tuple[int, float]]:
         points = []
         for (m_id, s, ts), value in self.data.items():
-            if m_id == meter_id and s == stream and start_ms <= ts <= end_ms:
+            if m_id == entity_id and s == stream and start_ms <= ts <= end_ms:
                 points.append((ts, value))
         points.sort(key=lambda item: item[0])
         if limit > 0:
@@ -55,14 +55,14 @@ class FakeRedisStore:
 
 
 def make_entry(
-    meter_id: str = "m-1",
+    entity_id: str = "m-1",
     stream: str = "power",
     timestamp_ms: int = 1000,
     value: float = 12.5,
 ) -> timeseries_pb2.Entry:
     return timeseries_pb2.Entry(
         key=timeseries_pb2.EntryKey(
-            meter_id=meter_id,
+            entity_id=entity_id,
             stream=stream,
             timestamp_ms=Timestamp(
                 seconds=timestamp_ms // 1_000,
@@ -74,12 +74,12 @@ def make_entry(
 
 
 def make_key(
-    meter_id: str = "m-1",
+    entity_id: str = "m-1",
     stream: str = "power",
     timestamp_ms: int = 1000,
 ) -> timeseries_pb2.EntryKey:
     return timeseries_pb2.EntryKey(
-        meter_id=meter_id,
+        entity_id=entity_id,
         stream=stream,
         timestamp_ms=Timestamp(
             seconds=timestamp_ms // 1_000,

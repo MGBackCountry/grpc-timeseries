@@ -38,7 +38,7 @@ def test_set_entry_converts_datetime_timestamp_to_milliseconds(servicer):
     request = types.SimpleNamespace(
         entry=types.SimpleNamespace(
             key=types.SimpleNamespace(
-                meter_id="m-1",
+                entity_id="m-1",
                 stream="power",
                 timestamp_ms=timestamp,
             ),
@@ -80,7 +80,7 @@ def test_set_entry_returns_conflict_when_value_differs(servicer):
 
 def test_get_entry_returns_found_false_when_missing(servicer):
     request = types.SimpleNamespace(
-        key=make_key(meter_id="m-404", stream="power", timestamp_ms=9999)
+        key=make_key(entity_id="m-404", stream="power", timestamp_ms=9999)
     )
 
     reply = servicer.GetEntry(request, context=Mock())
@@ -91,13 +91,13 @@ def test_get_entry_returns_found_false_when_missing(servicer):
 def test_get_entry_returns_entry_when_present(servicer):
     servicer.store.overwrite_point("m-1", "power", 1000, 42.25)
     request = types.SimpleNamespace(
-        key=make_key(meter_id="m-1", stream="power", timestamp_ms=1000)
+        key=make_key(entity_id="m-1", stream="power", timestamp_ms=1000)
     )
 
     reply = servicer.GetEntry(request, context=Mock())
 
     assert reply.found is True
-    assert reply.entry.key.meter_id == "m-1"
+    assert reply.entry.key.entity_id == "m-1"
     assert reply.entry.key.stream == "power"
     assert reply.entry.key.timestamp_ms.ToMilliseconds() == 1000
     assert reply.entry.value == pytest.approx(42.25)
@@ -105,7 +105,7 @@ def test_get_entry_returns_entry_when_present(servicer):
 
 def test_update_entry_returns_not_found_when_entry_missing(servicer):
     request = types.SimpleNamespace(
-        entry=make_entry(meter_id="m-1", stream="power", timestamp_ms=1000, value=55.0)
+        entry=make_entry(entity_id="m-1", stream="power", timestamp_ms=1000, value=55.0)
     )
 
     reply = servicer.UpdateEntry(request, context=Mock())
@@ -117,7 +117,7 @@ def test_update_entry_returns_not_found_when_entry_missing(servicer):
 def test_update_entry_overwrites_existing_value(servicer):
     servicer.store.overwrite_point("m-1", "power", 1000, 10.0)
     request = types.SimpleNamespace(
-        entry=make_entry(meter_id="m-1", stream="power", timestamp_ms=1000, value=55.0)
+        entry=make_entry(entity_id="m-1", stream="power", timestamp_ms=1000, value=55.0)
     )
 
     reply = servicer.UpdateEntry(request, context=Mock())
@@ -129,7 +129,7 @@ def test_update_entry_overwrites_existing_value(servicer):
 
 def test_delete_entry_returns_not_found_when_missing(servicer):
     request = types.SimpleNamespace(
-        key=make_key(meter_id="m-1", stream="power", timestamp_ms=1000)
+        key=make_key(entity_id="m-1", stream="power", timestamp_ms=1000)
     )
 
     reply = servicer.DeleteEntry(request, context=Mock())
@@ -141,7 +141,7 @@ def test_delete_entry_returns_not_found_when_missing(servicer):
 def test_delete_entry_removes_existing_value(servicer):
     servicer.store.overwrite_point("m-1", "power", 1000, 10.0)
     request = types.SimpleNamespace(
-        key=make_key(meter_id="m-1", stream="power", timestamp_ms=1000)
+        key=make_key(entity_id="m-1", stream="power", timestamp_ms=1000)
     )
 
     reply = servicer.DeleteEntry(request, context=Mock())
@@ -158,7 +158,7 @@ def test_get_points_in_range_returns_points_in_requested_window(servicer):
     servicer.store.overwrite_point("m-1", "voltage", 2000, 230.0)
 
     request = types.SimpleNamespace(
-        meter_id="m-1",
+        entity_id="m-1",
         stream="power",
         start_ms=1500,
         end_ms=3000,
@@ -180,7 +180,7 @@ def test_get_points_in_range_applies_limit(servicer):
     servicer.store.overwrite_point("m-1", "power", 3000, 30.0)
 
     request = types.SimpleNamespace(
-        meter_id="m-1",
+        entity_id="m-1",
         stream="power",
         start_ms=0,
         end_ms=9999,
@@ -202,7 +202,7 @@ def test_get_points_in_range_includes_start_and_end_boundaries(servicer):
     servicer.store.overwrite_point("m-1", "power", 3000, 30.0)
 
     request = types.SimpleNamespace(
-        meter_id="m-1",
+        entity_id="m-1",
         stream="power",
         start_ms=1000,
         end_ms=3000,
@@ -224,7 +224,7 @@ def test_get_points_in_range_treats_negative_limit_as_unlimited(servicer):
     servicer.store.overwrite_point("m-1", "power", 3000, 30.0)
 
     request = types.SimpleNamespace(
-        meter_id="m-1",
+        entity_id="m-1",
         stream="power",
         start_ms=0,
         end_ms=9999,
@@ -288,17 +288,17 @@ def test_serve_configures_and_starts_grpc_server(capsys):
     assert output == "gRPC TimeSeries running on port 50051"
 
 
-def test_serve_routes_client_actions_without_starting_server():
+def test_serve_routes_client_modules_without_starting_server():
     client_runner = Mock(return_value=0)
     grpc_server_factory = Mock(name="grpc_server_factory")
-    original_runner = server._run_client_action
-    server._run_client_action = client_runner
+    original_runner = server._run_client_module
+    server._run_client_module = client_runner
     args = types.SimpleNamespace(
         version=False,
-        action="get",
-        target="localhost:50051",
-        meter_id="demo-meter",
-        stream="consumed_kwh",
+        module="get",
+        server_address="localhost:50051",
+        entity_id="entity-1234",
+        series="consumed_kwh",
         timestamp=datetime(2024, 8, 30, 5, 20, tzinfo=UTC),
         value=None,
     )
@@ -306,7 +306,7 @@ def test_serve_routes_client_actions_without_starting_server():
     try:
         result = server.serve(args=args, grpc_server_factory=grpc_server_factory)
     finally:
-        server._run_client_action = original_runner
+        server._run_client_module = original_runner
 
     assert result == 0
     client_runner.assert_called_once_with(args, out=print)
@@ -317,12 +317,26 @@ def test_build_parser_includes_client_arguments():
     parser = server.build_parser()
 
     args = parser.parse_args(
-        ["--action", "set", "--value", "42.5", "--timestamp", "2024-01-15T10:30:00Z"]
+        [
+            "set",
+            "--server-address",
+            "127.0.0.1:50052",
+            "--entity-id",
+            "meter-42",
+            "--series",
+            "power",
+            "--value",
+            "42.5",
+            "--timestamp",
+            "2024-01-15T10:30:00Z",
+        ]
     )
 
-    assert args.action == "set"
+    assert args.module == "set"
+    assert args.entity_id == "meter-42"
+    assert args.series == "power"
     assert args.value == pytest.approx(42.5)
-    assert args.target == "localhost:50051"
+    assert args.server_address == "127.0.0.1:50052"
     assert args.timestamp == datetime(2024, 1, 15, 10, 30, tzinfo=UTC)
 
 
@@ -339,8 +353,8 @@ def test_build_parser_rejects_invalid_timestamp(timestamp):
 
 def test_client_build_entry_converts_datetime_to_protobuf_timestamp():
     args = types.SimpleNamespace(
-        meter_id="meter-1",
-        stream="power",
+        entity_id="meter-1",
+        series="power",
         timestamp=datetime(2024, 1, 15, 10, 30, tzinfo=UTC),
         value=42.5,
     )
@@ -361,7 +375,6 @@ def test_build_parser_includes_query_arguments():
 
     args = parser.parse_args(
         [
-            "--action",
             "query",
             "--start",
             "2024-01-15T10:30:00Z",
@@ -372,13 +385,13 @@ def test_build_parser_includes_query_arguments():
         ]
     )
 
-    assert args.action == "query"
+    assert args.module == "query"
     assert args.start == datetime(2024, 1, 15, 10, 30, tzinfo=UTC)
     assert args.end == datetime(2024, 1, 15, 11, 30, tzinfo=UTC)
     assert args.limit == 10
 
 
-def test_run_client_action_delete(capsys):
+def test_run_client_module_delete(capsys):
     client_mock = Mock()
     delete_reply = Mock(ok=True, message="deleted")
     client_mock.DeleteEntry.return_value = delete_reply
@@ -400,13 +413,13 @@ def test_run_client_action_delete(capsys):
 
     try:
         args = types.SimpleNamespace(
-            action="delete",
-            target="localhost:50051",
-            meter_id="meter-1",
-            stream="power",
+            module="delete",
+            server_address="localhost:50051",
+            entity_id="meter-1",
+            series="power",
             timestamp=datetime(1970, 1, 1, tzinfo=UTC),
         )
-        result = server._run_client_action(args)
+        result = server._run_client_module(args)
 
         assert result == 0
         output = capsys.readouterr().out
@@ -417,7 +430,7 @@ def test_run_client_action_delete(capsys):
         timeseries_pb2_grpc.TimeSeriesStub = original_stub
 
 
-def test_run_client_action_get_converts_datetime_to_protobuf_timestamp(capsys):
+def test_run_client_module_get_converts_datetime_to_protobuf_timestamp(capsys):
     client_mock = Mock()
     client_mock.GetEntry.return_value = Mock(found=False)
 
@@ -438,13 +451,13 @@ def test_run_client_action_get_converts_datetime_to_protobuf_timestamp(capsys):
 
     try:
         args = types.SimpleNamespace(
-            action="get",
-            target="localhost:50051",
-            meter_id="meter-1",
-            stream="power",
+            module="get",
+            server_address="localhost:50051",
+            entity_id="meter-1",
+            series="power",
             timestamp=datetime(2024, 1, 15, 10, 30, tzinfo=UTC),
         )
-        result = server._run_client_action(args)
+        result = server._run_client_module(args)
 
         assert result == 0
         request = client_mock.GetEntry.call_args.args[0]
@@ -456,7 +469,7 @@ def test_run_client_action_get_converts_datetime_to_protobuf_timestamp(capsys):
         timeseries_pb2_grpc.TimeSeriesStub = original_stub
 
 
-def test_run_client_action_query(capsys):
+def test_run_client_module_query(capsys):
     client_mock = Mock()
     point1 = Mock(timestamp_ms=1000, value=10.5)
     point2 = Mock(timestamp_ms=2000, value=20.5)
@@ -480,15 +493,15 @@ def test_run_client_action_query(capsys):
 
     try:
         args = types.SimpleNamespace(
-            action="query",
-            target="localhost:50051",
-            meter_id="meter-1",
-            stream="power",
+            module="query",
+            server_address="localhost:50051",
+            entity_id="meter-1",
+            series="power",
             start=datetime(1970, 1, 1, 0, 0, 1, tzinfo=UTC),
             end=datetime(1970, 1, 1, 0, 0, 2, tzinfo=UTC),
             limit=0,
         )
-        result = server._run_client_action(args)
+        result = server._run_client_module(args)
 
         assert result == 0
         request = client_mock.QueryRange.call_args.args[0]
@@ -504,7 +517,7 @@ def test_run_client_action_query(capsys):
         timeseries_pb2_grpc.TimeSeriesStub = original_stub
 
 
-def test_run_client_action_version(capsys):
+def test_run_client_module_version(capsys):
     client_mock = Mock()
     version_reply = Mock(version="1.0.0")
     client_mock.GetVersion.return_value = version_reply
@@ -526,13 +539,13 @@ def test_run_client_action_version(capsys):
 
     try:
         args = types.SimpleNamespace(
-            action="version",
-            target="localhost:50051",
-            meter_id="demo-meter",
-            stream="consumed_kwh",
+            module="version",
+            server_address="localhost:50051",
+            entity_id="entity-1234",
+            series="consumed_kwh",
             timestamp=datetime(2024, 8, 30, 5, 20, tzinfo=UTC),
         )
-        result = server._run_client_action(args)
+        result = server._run_client_module(args)
 
         assert result == 0
         output = capsys.readouterr().out
@@ -543,33 +556,33 @@ def test_run_client_action_version(capsys):
         timeseries_pb2_grpc.TimeSeriesStub = original_stub
 
 
-def test_run_client_action_query_missing_start():
+def test_run_client_module_query_missing_start():
     args = types.SimpleNamespace(
-        action="query",
-        target="localhost:50051",
-        meter_id="meter-1",
-        stream="power",
+        module="query",
+        server_address="localhost:50051",
+        entity_id="meter-1",
+        series="power",
         start=None,
         end=datetime(1970, 1, 1, tzinfo=UTC),
         limit=0,
     )
-    
-    result = server._run_client_action(args, err=lambda x: None)
-    
+
+    result = server._run_client_module(args, err=lambda _: None)
+
     assert result == 1
 
 
-def test_run_client_action_query_missing_end():
+def test_run_client_module_query_missing_end():
     args = types.SimpleNamespace(
-        action="query",
-        target="localhost:50051",
-        meter_id="meter-1",
-        stream="power",
+        module="query",
+        server_address="localhost:50051",
+        entity_id="meter-1",
+        series="power",
         start=datetime(1970, 1, 1, tzinfo=UTC),
         end=None,
         limit=0,
     )
-    
-    result = server._run_client_action(args, err=lambda x: None)
-    
+
+    result = server._run_client_module(args, err=lambda _: None)
+
     assert result == 1
