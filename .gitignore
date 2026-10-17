@@ -29,6 +29,7 @@ MANIFEST
 # Ignore all files named .DS_Store or ending with .log
 **/.DS_Store
 **.log
+**/nohup.out
 
 # Ignore files in generated direcory, except for __init__.py
 **/generated/*

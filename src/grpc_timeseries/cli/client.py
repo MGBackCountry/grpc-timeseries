@@ -70,10 +70,10 @@ def _client_build_entry(args: argparse.Namespace) -> timeseries_pb2.Entry:
     return timeseries_pb2.Entry(
         key=timeseries_pb2.EntryKey(
             entity_id=args.entity_id,
-            stream=args.series,
+            stream=args.series_key,
             timestamp_ms=_timestamp_from_datetime(args.timestamp),
         ),
-        value=args.value,
+        value=args.point_value,
     )
 
 
@@ -93,7 +93,7 @@ def _run_client_module(
                         timeseries_pb2.GetEntryRequest(
                             key=timeseries_pb2.EntryKey(
                                 entity_id=args.entity_id,
-                                stream=args.series,
+                                stream=args.series_key,
                                 timestamp_ms=_timestamp_from_datetime(args.timestamp),
                             )
                         )
@@ -110,8 +110,8 @@ def _run_client_module(
                     return 0
 
                 case "set":
-                    if args.value is None:
-                        err("--value is required for the set module")
+                    if args.point_value is None:
+                        err("--point-value is required for the set module")
                         return 1
                     set_reply = client.SetEntry(
                         timeseries_pb2.SetEntryRequest(entry=_client_build_entry(args))
@@ -120,8 +120,8 @@ def _run_client_module(
                     return 0
 
                 case "update":
-                    if args.value is None:
-                        err("--value is required for the update module")
+                    if args.point_value is None:
+                        err("--point-value is required for the update module")
                         return 1
                     update_reply = client.UpdateEntry(
                         timeseries_pb2.UpdateEntryRequest(entry=_client_build_entry(args))
@@ -134,7 +134,7 @@ def _run_client_module(
                         timeseries_pb2.DeleteEntryRequest(
                             key=timeseries_pb2.EntryKey(
                                 entity_id=args.entity_id,
-                                stream=args.series,
+                                stream=args.series_key,
                                 timestamp_ms=_timestamp_from_datetime(args.timestamp),
                             )
                         )
@@ -152,7 +152,7 @@ def _run_client_module(
                     query_reply = client.QueryRange(
                         timeseries_pb2.QueryRangeRequest(
                             entity_id=args.entity_id,
-                            stream=args.series,
+                            stream=args.series_key,
                             start_ms=_timestamp_to_milliseconds(_timestamp_from_datetime(start)),
                             end_ms=_timestamp_to_milliseconds(_timestamp_from_datetime(end)),
                             limit=limit,
@@ -189,7 +189,7 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Address of the gRPC server")
     parser.add_argument("--entity-id", dest="entity_id", default="entity-1234",
                         help="ID of the entity for get, set, update, or delete modules")
-    parser.add_argument("--series", default="consumed_kwh",
+    parser.add_argument("--series-key", default="consumed_kwh",
                         help="Name of the time series for get, set, update, or delete modules")
     parser.add_argument("--timestamp", type=_parse_datetime,
                         default=_parse_datetime("2024-08-30T05:20:00Z"),
@@ -197,7 +197,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("module", choices=["serve", "get", "set", "update", "delete", "query", "version"],
                         nargs="?", default="serve",
                         help="Module to run (serve, get, set, update, delete, query, version)")
-    parser.add_argument("--value", type=float, help="Value for set or update module")
+    parser.add_argument("--point-value", type=float, help="Value for set or update module")
     parser.add_argument("--start", type=_parse_datetime, 
                         help="ISO 8601 start datetime with timezone for query module")
     parser.add_argument("--end", type=_parse_datetime,

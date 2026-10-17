@@ -11,9 +11,9 @@ def main() -> int:
     options_with_values = {
         "--server-address",
         "--entity-id",
-        "--series",
+        "--series-key",
         "--timestamp",
-        "--value",
+        "--point-value",
         "--start",
         "--end",
         "--limit",

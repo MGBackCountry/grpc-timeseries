@@ -60,30 +60,27 @@ Range queries read timestamps from the sorted set and then fetch matching values
 | `protos/timeseries.proto` | gRPC and protobuf contract |
 | `src/grpc_timeseries/server.py` | gRPC servicer and server startup |
 | `src/grpc_timeseries/redis_store.py` | Redis-backed time-series storage |
-| `src/grpc_timeseries/generated/` | checked-in generated protobuf/gRPC bindings |
+| `src/grpc_timeseries/generated/` | generated protobuf/gRPC bindings |
 | `tests/test_server_integration.py` | fast servicer tests using a fake store |
 | `tests/test_grpc_client_integration.py` | real gRPC client/server integration tests |
 | `tests/test_redis_store.py` | focused Redis store behavior tests |
 
 ## Local development
 
-### Install dependencies
+### Install the package and run it with Redis in Docker
 
 ```bash
 uv sync
+make gen-protos
+docker compose up -d redis
+uv run grpc-timeseries serve
 ```
 
-### Run the server
-
-```bash
-make run
-```
-
-or:
-
-```bash
-uv run python -m grpc_timeseries
-```
+`uv sync` installs the project into its virtual environment and makes the
+`grpc-timeseries` command available through `uv run`. `make gen-protos` creates
+the protobuf bindings needed by the service. The Compose command starts only
+Redis; the Python gRPC server runs locally and connects to Redis through the
+published host port `16379`. The server listens on gRPC port `50051`.
 
 ### Run a quick client call through the same entrypoint
 
@@ -93,27 +90,27 @@ datetimes with a timezone.
 
 #### Get a single entry
 ```bash
-uv run python -m grpc_timeseries get --entity-id entity-1234 --series consumed_kwh --timestamp 2024-08-30T05:20:00Z
+uv run python -m grpc_timeseries get --entity-id entity-1234 --series-key consumed_kwh --timestamp 2024-08-30T05:20:00Z
 ```
 
 #### Set a new entry
 ```bash
-uv run python -m grpc_timeseries set --entity-id entity-1234 --series consumed_kwh --timestamp 2024-08-30T05:20:00Z --value 12.5
+uv run python -m grpc_timeseries set --entity-id entity-1234 --series-key consumed_kwh --timestamp 2024-08-30T05:20:00Z --point-value 12.5
 ```
 
 #### Update an existing entry
 ```bash
-uv run python -m grpc_timeseries update --entity-id entity-1234 --series consumed_kwh --timestamp 2024-08-30T05:20:00Z --value 18.75
+uv run python -m grpc_timeseries update --entity-id entity-1234 --series-key consumed_kwh --timestamp 2024-08-30T05:20:00Z --point-value 18.75
 ```
 
 #### Delete an entry
 ```bash
-uv run python -m grpc_timeseries delete --entity-id entity-1234 --series consumed_kwh --timestamp 2024-08-30T05:20:00Z
+uv run python -m grpc_timeseries delete --entity-id entity-1234 --series-key consumed_kwh --timestamp 2024-08-30T05:20:00Z
 ```
 
 #### Query a range of entries
 ```bash
-uv run python -m grpc_timeseries query --entity-id entity-1234 --series consumed_kwh --start 2024-08-30T05:20:00Z --end 2024-08-31T05:20:00Z --limit 10
+uv run python -m grpc_timeseries query --entity-id entity-1234 --series-key consumed_kwh --start 2024-08-30T05:20:00Z --end 2024-08-31T05:20:00Z --limit 10
 ```
 
 #### Get server version
@@ -132,8 +129,8 @@ uv run scripts/local_client.py version
 
 The server reads these environment variables:
 
-- `REDIS_HOST` (default: `redis`)
-- `REDIS_PORT` (default: `6379`)
+- `REDIS_HOST` (default: `127.0.0.1`; Compose sets this to `redis` for the containerized server)
+- `REDIS_PORT` (default: `16379`; Compose sets this to `6379` for the containerized server)
 - `GRPC_PORT` (default: `50051`)
 
 ### Regenerate protobuf bindings
@@ -164,7 +161,13 @@ make test-one TEST=tests/test_server_integration.py::test_query_range_applies_li
 
 ## Docker
 
-Start the Redis + gRPC stack:
+Start only Redis for the local-install workflow above:
+
+```bash
+docker compose up -d redis
+```
+
+To run both Redis and the gRPC server in Docker instead:
 
 ```bash
 docker compose up
