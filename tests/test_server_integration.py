@@ -298,9 +298,9 @@ def test_serve_routes_client_modules_without_starting_server():
         module="get",
         server_address="localhost:50051",
         entity_id="entity-1234",
-        series="consumed_kwh",
+        series_key="consumed_kwh",
         timestamp=datetime(2024, 8, 30, 5, 20, tzinfo=UTC),
-        value=None,
+        point_value=None,
     )
 
     try:
@@ -323,9 +323,9 @@ def test_build_parser_includes_client_arguments():
             "127.0.0.1:50052",
             "--entity-id",
             "meter-42",
-            "--series",
+            "--series-key",
             "power",
-            "--value",
+            "--point-value",
             "42.5",
             "--timestamp",
             "2024-01-15T10:30:00Z",
@@ -334,8 +334,8 @@ def test_build_parser_includes_client_arguments():
 
     assert args.module == "set"
     assert args.entity_id == "meter-42"
-    assert args.series == "power"
-    assert args.value == pytest.approx(42.5)
+    assert args.series_key == "power"
+    assert args.point_value == pytest.approx(42.5)
     assert args.server_address == "127.0.0.1:50052"
     assert args.timestamp == datetime(2024, 1, 15, 10, 30, tzinfo=UTC)
 
@@ -354,9 +354,9 @@ def test_build_parser_rejects_invalid_timestamp(timestamp):
 def test_client_build_entry_converts_datetime_to_protobuf_timestamp():
     args = types.SimpleNamespace(
         entity_id="meter-1",
-        series="power",
+        series_key="power",
         timestamp=datetime(2024, 1, 15, 10, 30, tzinfo=UTC),
-        value=42.5,
+        point_value=42.5,
     )
 
     entry = server._client_build_entry(args)
@@ -416,7 +416,7 @@ def test_run_client_module_delete(capsys):
             module="delete",
             server_address="localhost:50051",
             entity_id="meter-1",
-            series="power",
+            series_key="power",
             timestamp=datetime(1970, 1, 1, tzinfo=UTC),
         )
         result = server._run_client_module(args)
@@ -454,7 +454,7 @@ def test_run_client_module_get_converts_datetime_to_protobuf_timestamp(capsys):
             module="get",
             server_address="localhost:50051",
             entity_id="meter-1",
-            series="power",
+            series_key="power",
             timestamp=datetime(2024, 1, 15, 10, 30, tzinfo=UTC),
         )
         result = server._run_client_module(args)
@@ -496,7 +496,7 @@ def test_run_client_module_query(capsys):
             module="query",
             server_address="localhost:50051",
             entity_id="meter-1",
-            series="power",
+            series_key="power",
             start=datetime(1970, 1, 1, 0, 0, 1, tzinfo=UTC),
             end=datetime(1970, 1, 1, 0, 0, 2, tzinfo=UTC),
             limit=0,
@@ -542,7 +542,7 @@ def test_run_client_module_version(capsys):
             module="version",
             server_address="localhost:50051",
             entity_id="entity-1234",
-            series="consumed_kwh",
+            series_key="consumed_kwh",
             timestamp=datetime(2024, 8, 30, 5, 20, tzinfo=UTC),
         )
         result = server._run_client_module(args)
@@ -561,7 +561,7 @@ def test_run_client_module_query_missing_start():
         module="query",
         server_address="localhost:50051",
         entity_id="meter-1",
-        series="power",
+        series_key="power",
         start=None,
         end=datetime(1970, 1, 1, tzinfo=UTC),
         limit=0,
@@ -577,7 +577,7 @@ def test_run_client_module_query_missing_end():
         module="query",
         server_address="localhost:50051",
         entity_id="meter-1",
-        series="power",
+        series_key="power",
         start=datetime(1970, 1, 1, tzinfo=UTC),
         end=None,
         limit=0,

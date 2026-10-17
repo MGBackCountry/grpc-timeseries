@@ -56,4 +56,4 @@ COPY --from=builder /usr/local /usr/local
 ENV PYTHONUNBUFFERED=1
 
 # Run the installed CLI
-CMD ["grpc-timeseries"]
+CMD ["grpc-timeseries", "serve"]
