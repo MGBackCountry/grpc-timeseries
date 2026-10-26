@@ -586,3 +586,7 @@ def test_run_client_module_query_missing_end():
     result = server._run_client_module(args, err=lambda _: None)
 
     assert result == 1
+
+
+def test_get_point_returns_none_for_missing_timestamp(servicer):
+    assert servicer.store.get_point("m-1", "power", 9999) is None

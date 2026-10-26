@@ -134,3 +134,15 @@ def test_delete_existing_point_raises_when_delete_counts_drift():
 
     with pytest.raises(RedisStoreDriftError, match="Point delete drift"):
         store.delete_existing_point("meter-1", "power", 1000)
+
+
+def test_get_point_raises_key_error_when_missing():
+    store = RedisTimeSeriesStore()
+    store.r = Mock()
+    store.r.hget.return_value = None
+
+    with pytest.raises(
+        KeyError,
+        match=r"Point not found for entity_id='meter-1', stream='power', timestamp_ms=9999",
+    ):
+        store.get_point("meter-1", "power", 9999)
