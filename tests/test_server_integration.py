@@ -1,3 +1,4 @@
+import signal
 import types
 from datetime import UTC, datetime
 from unittest.mock import Mock
@@ -253,7 +254,7 @@ def test_serve_prints_version_and_does_not_start_server(capsys):
     grpc_server_factory.assert_not_called()
 
 
-def test_serve_configures_and_starts_grpc_server(capsys):
+def test_serve_configures_and_starts_grpc_server(caplog):
     fake_store = FakeRedisStore()
     fake_servicer = server.TimeSeriesServicer(store=fake_store)
 
@@ -266,13 +267,14 @@ def test_serve_configures_and_starts_grpc_server(capsys):
         added["servicer"] = servicer
         added["grpc_server"] = grpc_server
 
-    result = server.serve(
-        args=types.SimpleNamespace(version=False),
-        grpc_server_factory=grpc_server_factory,
-        register_servicer=fake_add_servicer_to_server,
-        servicer_factory=lambda: fake_servicer,
-        port=50051,
-    )
+    with caplog.at_level("INFO", logger=server.__name__):
+        result = server.serve(
+            args=types.SimpleNamespace(version=False),
+            grpc_server_factory=grpc_server_factory,
+            register_servicer=fake_add_servicer_to_server,
+            servicer_factory=lambda: fake_servicer,
+            port=50051,
+        )
 
     grpc_server_factory.assert_called_once_with()
     fake_server.add_insecure_port.assert_called_once_with("[::]:50051")
@@ -283,9 +285,108 @@ def test_serve_configures_and_starts_grpc_server(capsys):
     assert added["servicer"].store is fake_store
     assert added["grpc_server"] is fake_server
 
-    output = capsys.readouterr().out.strip()
     assert result == 0
-    assert output == "gRPC TimeSeries running on port 50051"
+    assert "gRPC TimeSeries running on" in caplog.text
+
+
+def test_serve_uses_custom_host_and_port():
+    fake_server = Mock(name="grpc_server_instance")
+    grpc_server_factory = Mock(return_value=fake_server)
+
+    result = server.serve(
+        args=types.SimpleNamespace(version=False),
+        grpc_server_factory=grpc_server_factory,
+        register_servicer=Mock(),
+        servicer_factory=lambda: server.TimeSeriesServicer(store=FakeRedisStore()),
+        host="0.0.0.0",
+        port=12345,
+    )
+
+    assert result == 0
+    fake_server.add_insecure_port.assert_called_once_with("0.0.0.0:12345")
+
+
+def test_serve_returns_error_when_bind_fails(caplog):
+    fake_server = Mock(name="grpc_server_instance")
+    fake_server.add_insecure_port.return_value = 0
+    grpc_server_factory = Mock(return_value=fake_server)
+
+    with caplog.at_level("ERROR", logger=server.__name__):
+        result = server.serve(
+            args=types.SimpleNamespace(version=False),
+            grpc_server_factory=grpc_server_factory,
+            register_servicer=Mock(),
+            servicer_factory=lambda: server.TimeSeriesServicer(store=FakeRedisStore()),
+            port=50051,
+        )
+
+    assert result == 1
+    fake_server.start.assert_not_called()
+    fake_server.wait_for_termination.assert_not_called()
+    assert "Failed to bind" in caplog.text
+
+
+def test_serve_registers_health_service_by_default():
+    fake_server = Mock(name="grpc_server_instance")
+    grpc_server_factory = Mock(return_value=fake_server)
+
+    result = server.serve(
+        args=types.SimpleNamespace(version=False),
+        grpc_server_factory=grpc_server_factory,
+        register_servicer=Mock(),
+        servicer_factory=lambda: server.TimeSeriesServicer(store=FakeRedisStore()),
+        port=50051,
+    )
+
+    assert result == 0
+    method_names = {call_args.args[0] for call_args in fake_server.add_generic_rpc_handlers.call_args_list}
+    # The health service registers generic RPC handlers on the grpc.Server.
+    assert method_names, "expected the health service to register RPC handlers"
+
+
+def test_serve_skips_health_service_when_disabled():
+    fake_server = Mock(name="grpc_server_instance")
+    grpc_server_factory = Mock(return_value=fake_server)
+
+    result = server.serve(
+        args=types.SimpleNamespace(version=False),
+        grpc_server_factory=grpc_server_factory,
+        register_servicer=Mock(),
+        servicer_factory=lambda: server.TimeSeriesServicer(store=FakeRedisStore()),
+        port=50051,
+        register_health_service=False,
+    )
+
+    assert result == 0
+    fake_server.add_generic_rpc_handlers.assert_not_called()
+
+
+def test_install_signal_handlers_stops_server_on_sigterm():
+    fake_server = Mock(name="grpc_server_instance")
+
+    server._install_signal_handlers(fake_server, shutdown_grace_seconds=3.0, health_servicer=None)
+    try:
+        handler = signal.getsignal(signal.SIGTERM)
+        handler(signal.SIGTERM, None)
+    finally:
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+    fake_server.stop.assert_called_once_with(3.0)
+
+
+def test_install_signal_handlers_marks_health_not_serving_on_shutdown():
+    fake_server = Mock(name="grpc_server_instance")
+    health_servicer = Mock(name="health_servicer")
+
+    server._install_signal_handlers(fake_server, shutdown_grace_seconds=1.0, health_servicer=health_servicer)
+    try:
+        handler = signal.getsignal(signal.SIGINT)
+        handler(signal.SIGINT, None)
+    finally:
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+    health_servicer.enter_graceful_shutdown.assert_called_once_with()
+    fake_server.stop.assert_called_once_with(1.0)
 
 
 def test_serve_routes_client_modules_without_starting_server():

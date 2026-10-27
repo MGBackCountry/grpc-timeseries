@@ -131,7 +131,16 @@ The server reads these environment variables:
 
 - `REDIS_HOST` (default: `127.0.0.1`; Compose sets this to `redis` for the containerized server)
 - `REDIS_PORT` (default: `16379`; Compose sets this to `6379` for the containerized server)
+- `GRPC_HOST` (default: `[::]`; the address the gRPC server binds to)
 - `GRPC_PORT` (default: `50051`)
+- `GRPC_SHUTDOWN_GRACE_SECONDS` (default: `5`; how long in-flight RPCs get to
+  finish after a `SIGINT`/`SIGTERM` before the server force-closes)
+- `LOG_LEVEL` (default: `INFO`; controls the verbosity of the server's log
+  output)
+
+On `SIGINT`/`SIGTERM` the server stops accepting new RPCs, marks the gRPC
+health service (`grpc.health.v1.Health`) as `NOT_SERVING`, and waits up to
+`GRPC_SHUTDOWN_GRACE_SECONDS` for in-flight requests to finish before exiting.
 
 ### Regenerate protobuf bindings
 
